@@ -19,6 +19,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -197,6 +198,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -208,6 +210,7 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: #65e4d0;
   box-shadow: 0 0 0 4px rgba(101, 228, 208, 0.12);
@@ -283,12 +286,28 @@ textarea:focus {
 }
 
 .home-grid,
-.room-layout {
+.room-layout,
+.agent-name-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
   max-width: 1240px;
   margin: 0 auto;
+}
+
+.agent-name-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.readonly-field input:disabled {
+  color: #ffcc66;
+  opacity: 1;
+  cursor: not-allowed;
+  border-color: rgba(255, 204, 102, 0.28);
+  background: rgba(255, 204, 102, 0.08);
 }
 
 .play-panel,
@@ -466,20 +485,74 @@ textarea:focus {
 }
 
 .table-zone {
-  min-height: 520px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  position: relative;
+  min-height: 620px;
+  aspect-ratio: 1 / 1;
+  max-height: 720px;
+  margin: 0 auto;
+  width: min(100%, 720px);
   padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: 50%;
   background:
-    radial-gradient(ellipse at center, rgba(101, 228, 208, 0.15), transparent 48%),
+    radial-gradient(circle at center, rgba(255, 204, 102, 0.2) 0 18%, transparent 19%),
+    radial-gradient(circle at center, transparent 0 44%, rgba(101, 228, 208, 0.2) 45%, transparent 47%),
+    radial-gradient(circle at center, rgba(101, 228, 208, 0.12), transparent 58%),
     rgba(255, 255, 255, 0.045);
 }
 
+.table-zone::before {
+  content: "";
+  position: absolute;
+  inset: 17%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background:
+    linear-gradient(140deg, rgba(18, 18, 24, 0.35), rgba(18, 18, 24, 0.78)),
+    radial-gradient(circle at 35% 25%, rgba(255, 204, 102, 0.18), transparent 35%);
+  box-shadow: inset 0 0 55px rgba(0, 0, 0, 0.38);
+}
+
+.table-center {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: min(260px, 38%);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  background: rgba(13, 13, 18, 0.78);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+}
+
+.table-center span {
+  color: #65e4d0;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.table-center strong {
+  color: #fff8ed;
+  font-size: clamp(18px, 2vw, 28px);
+}
+
+.table-center small {
+  color: #cfc3b8;
+  font-weight: 700;
+}
+
 .player-seat {
-  min-height: 124px;
+  position: absolute;
+  z-index: 2;
+  width: min(230px, 34%);
+  min-height: 112px;
   display: grid;
   grid-template-columns: 54px 1fr auto;
   gap: 14px;
@@ -488,11 +561,21 @@ textarea:focus {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: rgba(13, 13, 18, 0.72);
+  transform: translate(-50%, -50%);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.player-seat:hover {
+  transform: translate(-50%, -50%) scale(1.03);
 }
 
 .player-seat.active {
   border-color: #ffcc66;
-  box-shadow: 0 0 0 4px rgba(255, 204, 102, 0.12);
+  box-shadow: 0 0 0 4px rgba(255, 204, 102, 0.12), 0 18px 44px rgba(255, 204, 102, 0.14);
+}
+
+.player-seat.human {
+  border-color: rgba(101, 228, 208, 0.5);
 }
 
 .player-seat.out {
@@ -507,6 +590,7 @@ textarea:focus {
   border-radius: 50%;
   color: #111014;
   background: #65e4d0;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -522,6 +606,10 @@ textarea:focus {
   padding: 12px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #d8cec4;
+}
+
+.round-panel .primary-button {
+  margin-top: 10px;
 }
 
 .vote-strip {
@@ -657,8 +745,37 @@ textarea:focus {
   }
 
   .table-zone {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
     min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 8px;
+  }
+
+  .table-zone::before {
+    display: none;
+  }
+
+  .table-center,
+  .player-seat {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    width: 100%;
+    aspect-ratio: auto;
+    transform: none;
+  }
+
+  .table-center {
+    min-height: 140px;
+    border-radius: 8px;
+  }
+
+  .player-seat:hover {
+    transform: none;
   }
 }
 

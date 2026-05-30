@@ -1,6 +1,10 @@
 <template>
-  <article class="player-seat" :class="{ active: player.speaking, out: !player.alive }">
-    <div class="seat-avatar">{{ player.id }}</div>
+  <article
+    class="player-seat"
+    :class="{ active: player.speaking, out: !player.alive, human: player.type === 'human' }"
+    :style="positionStyle"
+  >
+    <div class="seat-avatar">{{ player.type === 'human' ? 'YOU' : player.id }}</div>
     <div>
       <strong>{{ player.name }}</strong>
       <span>{{ player.alive ? (player.speaking ? '正在发言' : status) : '已出局' }}</span>
@@ -16,11 +20,16 @@ export default {
     player: {
       type: Object,
       required: true
+    },
+    positionStyle: {
+      type: Object,
+      default: () => ({})
     }
   },
   computed: {
     status () {
-      return this.player.voted ? '等待结算' : '观察中'
+      if (this.player.type === 'human') return this.player.voted ? '你已投票' : '由你操控'
+      return this.player.voted ? 'AI 已投票' : this.player.trait
     }
   }
 }

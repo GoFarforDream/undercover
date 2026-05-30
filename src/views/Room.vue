@@ -2,29 +2,34 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <span class="eyebrow">房间配置</span>
-        <h1>创建你的游戏桌</h1>
+        <span class="eyebrow">智能体配置</span>
+        <h1>固定 6 人圆桌</h1>
       </div>
-      <button class="ghost-button" type="button" @click="$router.push('/home')">返回大厅</button>
+      <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
     </header>
     <section class="room-layout">
       <div class="room-card">
-        <h2>房间 UC-0529</h2>
-        <div class="copy-box">
-          <span>{{ inviteText }}</span>
-          <button type="button" @click="copied = true">复制</button>
-        </div>
+        <h2>人机局参数</h2>
+        <p class="modal-copy">每局固定 6 个席位：默认是你加 5 个智能体，也可以把你的席位交给智能体托管。</p>
         <div class="settings-grid compact">
-          <label>
-            玩家人数
-            <input v-model.number="settings.playerCount" min="4" max="12" type="number">
+          <label class="setting-row">
+            <span>玩家席位托管</span>
+            <input v-model="settings.playerAsAgent" type="checkbox">
           </label>
           <label>
-            卧底人数
+            智能体强度
+            <select v-model="settings.agentLevel">
+              <option>轻松</option>
+              <option>标准</option>
+              <option>高压</option>
+            </select>
+          </label>
+          <label>
+            卧底数量
             <input v-model.number="settings.undercoverCount" min="1" max="3" type="number">
           </label>
           <label>
-            白板人数
+            白板数量
             <input v-model.number="settings.blankCount" min="0" max="2" type="number">
           </label>
           <label>
@@ -32,36 +37,40 @@
             <input v-model.number="settings.roundSeconds" min="30" max="180" step="10" type="number">
           </label>
         </div>
-        <button class="primary-button full" type="button" @click="start">开始游戏</button>
-        <p v-if="copied" class="form-message">邀请信息已准备好。</p>
+        <div class="action-row">
+          <button class="primary-button" type="button" @click="start">开始人机对局</button>
+          <button class="ghost-button" type="button" @click="$router.push('/agents')">设置智能体名字</button>
+        </div>
       </div>
       <div class="waiting-list">
-        <article v-for="player in players" :key="player"> {{ player }} <span>已准备</span></article>
+        <article v-for="seat in seats" :key="seat.name">
+          {{ seat.name }}
+          <span>{{ seat.trait }}</span>
+        </article>
       </div>
     </section>
   </main>
 </template>
 
 <script>
-import { getSettings, saveSettings } from '../store/game'
+import { getSeatProfiles, getSettings, resetGameState, saveSettings } from '../store/game'
 
 export default {
-  name: 'Room',
+  name: 'AgentSetup',
   data () {
     return {
-      copied: false,
-      settings: getSettings(),
-      players: ['玩家 1', '玩家 2', '玩家 3', '玩家 4', '玩家 5', '玩家 6']
+      settings: getSettings()
     }
   },
   computed: {
-    inviteText () {
-      return `房间号 UC-0529，${this.settings.playerCount} 人局`
+    seats () {
+      return getSeatProfiles(this.settings)
     }
   },
   methods: {
     start () {
       saveSettings(this.settings)
+      resetGameState()
       this.$router.push('/game')
     }
   }
