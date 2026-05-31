@@ -13,8 +13,8 @@
 
     <section class="agent-name-layout">
       <div class="room-card">
-        <h2>玩家 + 5 个智能体</h2>
-        <p class="modal-copy">玩家昵称只展示不可修改；下面 5 个智能体名字会用于圆桌卡片、发言、投票和结算。</p>
+        <h2>5+1的卧底局</h2>
+        <p class="modal-copy">玩家昵称只展示不可在此修改；下面 5 个智能体名字会用于圆桌卡片、发言、投票和结算。</p>
 
         <label class="readonly-field">
           玩家昵称

@@ -48,7 +48,7 @@
       <p class="modal-copy">固定 6 个席位分别拿到身份词。平民词与卧底词相近，白板没有词。每轮按顺序发言，再由真人或托管席位参与投票，直到平民或卧底阵营获胜。</p>
     </game-modal>
     <game-modal v-model="agentOpen">
-      <div class="modal-kicker">智能体说明</div>
+      <div class="modal-kicker">卧底局说明</div>
       <h2>它们是你的 AI 对手</h2>
       <p class="modal-copy">Agent 会模拟真实玩家的发言风格：谨慎、推理、跟票、混淆或激进。你可以给 5 个固定智能体改名，让圆桌更像你自己的对局。</p>
     </game-modal>
@@ -70,8 +70,8 @@ export default {
       agentOpen: false,
       settings: getSettings(),
       modes: [
-        { tag: '推荐', title: '标准 6 人局', desc: '1 个玩家席位 + 5 个智能体，适合最快进入体验。' },
-        { tag: '托管', title: '托管席位演算', desc: '把玩家席位交给系统托管，观察 5 个智能体和托管席位自动博弈。' },
+        { tag: '推荐', title: '5+1的卧底局', desc: '1 个玩家席位 + 5 个智能体，适合最快进入体验。' },
+        { tag: '托管', title: '托管席位演算', desc: '把玩家席位交给系统托管，观察 6 个智能体和托管席位自动博弈。' },
         { tag: '训练', title: '推理压力局', desc: '智能体投票更主动，适合练习辨别话术漏洞。' }
       ]
     }

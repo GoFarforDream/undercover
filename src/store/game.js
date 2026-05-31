@@ -68,6 +68,7 @@ export function getSeatProfiles (settings = getSettings()) {
   }))
 }
 
+// 一下是没接入后端的代码，用于测试 接入后端，数据需要从后端获取
 export function getGameState () {
   const saved = localStorage.getItem('undercover-game')
   if (saved) return JSON.parse(saved)
@@ -80,7 +81,7 @@ export function getGameState () {
   return {
     matchId: 'AI-0529',
     round: 2,
-    phase: humanMode ? '人类发言阶段' : '智能体自动对局',
+    phase: humanMode ? '玩家发言阶段' : '智能体自动对局',
     civilianWord: '咖啡',
     undercoverWord: '奶茶',
     myWord: humanMode ? '咖啡' : '托管中',
