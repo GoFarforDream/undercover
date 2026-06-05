@@ -1,18 +1,17 @@
 import axios from 'axios'
 
-// 创建 axios 实例
 const service = axios.create({
-  baseURL: '/api', // 前端代理地址，真正Dify地址在 vue.config.js 里
-  timeout: 15000,
+  baseURL: process.env.VUE_APP_API_BASE || '/api',
+  timeout: 90000,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-// 请求拦截器
 service.interceptors.request.use(
   config => {
-    // 可在这里加 token
+    const token = localStorage.getItem('undercover-token')
+    if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   },
   error => {
@@ -23,12 +22,16 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
-    // 直接返回数据
-    return response.data
+    const body = response.data
+    if (body && Object.prototype.hasOwnProperty.call(body, 'code')) {
+      if (body.code === 200) return body.data
+      return Promise.reject(new Error(body.message || '请求失败'))
+    }
+    return body
   },
   error => {
-    console.error('请求异常：', error)
-    return Promise.reject(error)
+    const message = error.response?.data?.message || error.message || '网络异常'
+    return Promise.reject(new Error(message))
   }
 )
 

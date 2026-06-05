@@ -17,14 +17,17 @@
         <h2>玩家 + 5 个智能体</h2>
         <p>默认由你控制玩家席位，其余 5 个席位由智能体扮演。你也可以把玩家席位交给系统托管，观看整局自动推进。</p>
         <div class="action-row">
-          <button class="primary-button" type="button" @click="startNewGame">开始新对局</button>
-          <button class="ghost-button" type="button" @click="$router.push('/setup')">调整智能体</button>
+          <button class="primary-button" type="button" :disabled="loading" @click="startNewGame">开始智能体对局</button>
+          <button class="ghost-button" type="button" @click="$router.push('/setup')">调整对局</button>
           <button class="ghost-button" type="button" @click="$router.push('/agents')">智能体名字</button>
         </div>
+        <p v-if="message" class="form-message">{{ message }}</p>
       </div>
 
       <aside class="mission-panel">
         <h3>玩家常用</h3>
+        <input v-model.trim="joinCode" placeholder="输入 6 位房号">
+        <button type="button" :disabled="loading" @click="joinExistingRoom">加入普通房间</button>
         <button type="button" @click="$router.push('/game')">继续上一局</button>
         <button type="button" @click="rulesOpen = true">查看规则</button>
         <button type="button" @click="agentOpen = true">智能体说明</button>
@@ -36,6 +39,15 @@
         <span>{{ modeItem.tag }}</span>
         <h3>{{ modeItem.title }}</h3>
         <p>{{ modeItem.desc }}</p>
+      </article>
+    </section>
+
+    <section class="mode-grid" v-if="rooms.length">
+      <article v-for="room in rooms" :key="room.roomCode" class="mode-card">
+        <span>{{ room.status }}</span>
+        <h3>房间 {{ room.roomCode }}</h3>
+        <p>{{ room.players.length }} / {{ room.settings.maxPlayers }} 人 · {{ room.settings.speechSeconds }} 秒发言</p>
+        <button class="ghost-button" type="button" @click="joinRoomCard(room.roomCode)">进入房间</button>
       </article>
     </section>
 
@@ -58,7 +70,9 @@
 <script>
 import GameModal from '../components/GameModal.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
-import { getSettings, resetGameState, saveSettings } from '../store/game'
+import { joinRoom, listRooms } from '../api/room'
+import { getSettings, resetCurrentGamePointers, resetGameState, saveCurrentRoomCode, saveSettings } from '../store/game'
+import { clearSession, getSessionUser } from '../store/session'
 
 export default {
   name: 'Home',
@@ -68,6 +82,10 @@ export default {
       settingsOpen: false,
       rulesOpen: false,
       agentOpen: false,
+      loading: false,
+      message: '',
+      joinCode: '',
+      rooms: [],
       settings: getSettings(),
       modes: [
         { tag: '推荐', title: '5+1的卧底局', desc: '1 个玩家席位 + 5 个智能体，适合最快进入体验。' },
@@ -76,10 +94,46 @@ export default {
       ]
     }
   },
+  mounted () {
+    this.loadRooms()
+  },
   methods: {
-    startNewGame () {
-      resetGameState()
-      this.$router.push('/game')
+    async loadRooms () {
+      try {
+        this.rooms = await listRooms()
+      } catch (error) {
+        this.message = error.message || '房间列表加载失败。'
+      }
+    },
+    async startNewGame () {
+      resetCurrentGamePointers()
+      this.$router.push('/setup')
+    },
+    async joinExistingRoom () {
+      if (!this.joinCode) {
+        this.message = '请输入房号。'
+        return
+      }
+      await this.joinRoomCard(this.joinCode)
+    },
+    async joinRoomCard (roomCode) {
+      const user = getSessionUser()
+      if (!user?.id) {
+        this.message = '登录状态已失效，请重新登录。'
+        return
+      }
+      this.loading = true
+      this.message = ''
+      try {
+        const room = await joinRoom({ roomCode, userId: user.id })
+        saveCurrentRoomCode(room.roomCode)
+        resetGameState()
+        this.$router.push('/setup')
+      } catch (error) {
+        this.message = error.message || '加入房间失败。'
+      } finally {
+        this.loading = false
+      }
     },
     saveSettingsPanel (settings) {
       this.settings = settings
@@ -87,7 +141,7 @@ export default {
       this.settingsOpen = false
     },
     logout () {
-      localStorage.removeItem('undercover-auth')
+      clearSession()
       this.$router.push('/login')
     }
   }

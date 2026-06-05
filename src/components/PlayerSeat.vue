@@ -10,6 +10,7 @@
       <span>{{ player.alive ? (player.speaking ? '正在发言' : status) : '已出局' }}</span>
     </div>
     <i v-if="player.voted">已投</i>
+    <p v-if="player.speechBubble" class="speech-bubble">{{ player.speechBubble }}</p>
   </article>
 </template>
 

@@ -38,8 +38,10 @@
       <aside class="round-panel">
         <h3>发言记录</h3>
         <p v-for="log in state.logs" :key="log">{{ log }}</p>
-        <button class="ghost-button full" type="button" @click="speakOpen = true">{{ isHosted ? '记录托管发言' : '记录我的发言' }}</button>
-        <button class="primary-button full" type="button" @click="agentSpeak">让智能体继续发言</button>
+        <p v-if="!state.logs.length" class="modal-copy">暂无发言记录。</p>
+        <p v-if="message" class="form-message">{{ message }}</p>
+        <button class="ghost-button full" type="button" :disabled="loading || isFinished" @click="speakOpen = true">{{ isHosted ? '记录托管发言' : '记录我的发言' }}</button>
+        <button class="primary-button full" type="button" :disabled="loading || isFinished" @click="agentSpeak">智能体自动发言</button>
       </aside>
     </section>
 
@@ -49,7 +51,9 @@
         <strong>{{ vote.count }} 票</strong>
         <i :style="{ width: vote.count * 24 + '%' }"></i>
       </div>
-      <button class="danger-button" type="button" @click="voteOpen = true">{{ isHosted ? '托管席位投票' : '投出我的票' }}</button>
+      <button class="danger-button" type="button" :disabled="loading || isFinished" @click="voteOpen = true">{{ isHosted ? '托管席位投票' : '投出我的票' }}</button>
+      <button class="ghost-button" type="button" :disabled="loading || isFinished" @click="agentVoteAndResolve">智能体投票并结算</button>
+      <button class="ghost-button" type="button" :disabled="loading || isFinished" @click="nextRoundAction">下一轮</button>
       <button class="primary-button" type="button" @click="$router.push('/result')">查看结算</button>
     </section>
 
@@ -65,9 +69,10 @@
       <div class="modal-kicker">{{ isHosted ? '托管发言' : '我的发言' }}</div>
       <h2>{{ isHosted ? '补充玩家托管席位的描述' : '补充一句你的描述' }}</h2>
       <textarea v-model="newLog" rows="4" placeholder="例如：这个东西通常会在早上出现。"></textarea>
+      <p v-if="message" class="form-message">{{ message }}</p>
       <div class="modal-actions">
         <button class="ghost-button" type="button" @click="speakOpen = false">取消</button>
-        <button class="primary-button" type="button" @click="addLog">保存</button>
+        <button class="primary-button" type="button" :disabled="loading" @click="addLog">提交</button>
       </div>
     </game-modal>
     <game-modal v-model="voteOpen">
@@ -86,7 +91,9 @@
 import GameModal from '../components/GameModal.vue'
 import PlayerSeat from '../components/PlayerSeat.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
-import { getGameState, getSettings, saveGameState, saveSettings } from '../store/game'
+import { getCurrentAgentSessionId, getCurrentRoomCode, getGameState, getSettings, normalizeAgentGameState, normalizeBackendGameState, saveGameState, saveSettings } from '../store/game'
+import { getAgentGameState, getGameStateApi, nextAgentRound, nextRound, resolveAgentRound, runAgentSpeech, runAgentVote, submitAgentSpeech, submitAgentVote, submitSpeech, submitVote } from '../api/game'
+import { getSessionUser } from '../store/session'
 
 export default {
   name: 'Game',
@@ -100,13 +107,11 @@ export default {
       wordOpen: false,
       speakOpen: false,
       voteOpen: false,
+      loading: false,
+      message: '',
       newLog: '',
-      agentLines: [
-        'Agent 01：这个词和饮品有关，但我不想说得太具体。',
-        'Agent 03：我同意它常见于休息场景，不过 Agent 01 有点保守。',
-        'Agent 05：我倾向怀疑描述太泛的人，尤其是一直绕开味道的人。',
-        'Agent 02：目前信息里，卧底更可能在 Agent 01 和 Agent 03 之间。'
-      ]
+      sessionId: getCurrentAgentSessionId(),
+      roomCode: getCurrentRoomCode()
     }
   },
   computed: {
@@ -117,10 +122,32 @@ export default {
       return this.state.players.find(player => player.speaking) || this.state.players[0]
     },
     voteTargets () {
-      return this.state.players.filter(player => player.alive && player.name !== this.state.players[0].name)
+      const user = getSessionUser()
+      return this.state.players.filter(player => player.alive && player.id !== this.state.humanPlayerId && player.userId !== user?.id)
+    },
+    isFinished () {
+      return this.state.rawPhase === 'FINISHED'
     }
   },
+  mounted () {
+    this.refreshState()
+  },
   methods: {
+    async refreshState () {
+      const user = getSessionUser()
+      try {
+        if (this.sessionId) {
+          const backendState = await getAgentGameState(this.sessionId)
+          this.state = normalizeAgentGameState(backendState, user?.id)
+        } else if (this.roomCode) {
+          const backendState = await getGameStateApi(this.roomCode)
+          this.state = normalizeBackendGameState(backendState, user?.id)
+        }
+        saveGameState(this.state)
+      } catch (error) {
+        this.message = error.message || '游戏状态加载失败。'
+      }
+    },
     seatStyle (index, total) {
       const angle = -Math.PI / 2 + (Math.PI * 2 * index) / total
       const x = 50 + Math.cos(angle) * 38
@@ -135,26 +162,126 @@ export default {
       saveSettings(settings)
       this.settingsOpen = false
     },
-    addLog () {
+    async addLog () {
       if (!this.newLog.trim()) return
-      const speaker = this.isHosted ? this.state.players[0].name : '你'
-      this.state.logs.unshift(`${speaker}：${this.newLog.trim()}`)
-      saveGameState(this.state)
-      this.newLog = ''
-      this.speakOpen = false
+      const user = getSessionUser()
+      if (!user?.id || (!this.roomCode && !this.sessionId)) {
+        this.message = '缺少登录或房间信息。'
+        return
+      }
+      this.loading = true
+      this.message = ''
+      try {
+        if (this.sessionId) {
+          const backendState = await submitAgentSpeech({
+            sessionId: Number(this.sessionId),
+            playerId: this.state.humanPlayerId,
+            content: this.newLog.trim()
+          })
+          this.state = normalizeAgentGameState(backendState, user.id)
+        } else {
+          const backendState = await submitSpeech({
+            roomCode: this.roomCode,
+            userId: user.id,
+            content: this.newLog.trim()
+          })
+          this.state = normalizeBackendGameState(backendState, user.id)
+        }
+        saveGameState(this.state)
+        this.newLog = ''
+        this.speakOpen = false
+      } catch (error) {
+        this.message = error.message || '发言提交失败。'
+      } finally {
+        this.loading = false
+      }
     },
-    agentSpeak () {
-      const line = this.agentLines[this.state.logs.length % this.agentLines.length]
-      this.state.logs.unshift(line)
-      this.state.phase = '智能体推理阶段'
-      saveGameState(this.state)
+    async agentSpeak () {
+      if (!this.sessionId) {
+        this.message = '当前不是 Agent 对战会话。'
+        return
+      }
+      const user = getSessionUser()
+      this.loading = true
+      this.message = '智能体正在生成发言...'
+      try {
+        const backendState = await runAgentSpeech(this.sessionId)
+        this.state = normalizeAgentGameState(backendState, user?.id)
+        saveGameState(this.state)
+        this.message = '智能体已完成本轮发言。'
+      } catch (error) {
+        this.message = error.message || '智能体发言失败。'
+      } finally {
+        this.loading = false
+      }
     },
-    castVote (player) {
-      const target = this.state.votes.find(vote => vote.name === player.name)
-      if (target) target.count += 1
-      else this.state.votes.push({ name: player.name, count: 1 })
-      saveGameState(this.state)
-      this.voteOpen = false
+    async castVote (player) {
+      const user = getSessionUser()
+      if (!user?.id || (!this.roomCode && !this.sessionId)) return
+      this.loading = true
+      this.message = ''
+      try {
+        if (this.sessionId) {
+          const backendState = await submitAgentVote({
+            sessionId: Number(this.sessionId),
+            voterPlayerId: this.state.humanPlayerId,
+            targetPlayerId: player.id,
+            reason: '玩家手动投票'
+          })
+          this.state = normalizeAgentGameState(backendState, user.id)
+        } else {
+          const backendState = await submitVote({
+            roomCode: this.roomCode,
+            voterId: user.id,
+            targetId: player.id
+          })
+          this.state = normalizeBackendGameState(backendState, user.id)
+        }
+        saveGameState(this.state)
+        this.voteOpen = false
+      } catch (error) {
+        this.message = error.message || '投票失败。'
+      } finally {
+        this.loading = false
+      }
+    },
+    async agentVoteAndResolve () {
+      if (!this.sessionId) {
+        this.message = '当前不是 Agent 对战会话。'
+        return
+      }
+      const user = getSessionUser()
+      this.loading = true
+      this.message = '智能体正在投票并结算...'
+      try {
+        await runAgentVote(this.sessionId)
+        const backendState = await resolveAgentRound(this.sessionId)
+        this.state = normalizeAgentGameState(backendState, user?.id)
+        saveGameState(this.state)
+        this.message = this.state.rawPhase === 'FINISHED' ? '游戏已结束，可查看结算。' : '本轮已结算，可进入下一轮。'
+      } catch (error) {
+        this.message = error.message || '智能体投票或结算失败。'
+      } finally {
+        this.loading = false
+      }
+    },
+    async nextRoundAction () {
+      const user = getSessionUser()
+      this.loading = true
+      try {
+        if (this.sessionId) {
+          const backendState = await nextAgentRound(this.sessionId)
+          this.state = normalizeAgentGameState(backendState, user?.id)
+        } else if (this.roomCode) {
+          const backendState = await nextRound(this.roomCode)
+          this.state = normalizeBackendGameState(backendState, user?.id)
+        }
+        saveGameState(this.state)
+      } catch (error) {
+        this.message = error.message || '进入下一轮失败。'
+      } finally {
+        this.loading = false
+      }
     }
   }
 }

@@ -30,8 +30,14 @@
           确认密码
           <input v-model="form.confirm" autocomplete="new-password" placeholder="再次输入密码" type="password">
         </label>
+        <label v-if="mode === 'register'">
+          昵称
+          <input v-model.trim="form.nickname" autocomplete="nickname" placeholder="游戏内显示名">
+        </label>
         <p v-if="message" class="form-message">{{ message }}</p>
-        <button class="primary-button full" type="submit">{{ mode === 'login' ? '进入大厅' : '创建玩家档案' }}</button>
+        <button class="primary-button full" type="submit" :disabled="loading">
+          {{ loading ? '处理中...' : (mode === 'login' ? '进入大厅' : '创建玩家档案') }}
+        </button>
       </form>
       <button class="text-button" type="button" @click="quickFill">使用默认账号 admin / 123456</button>
     </section>
@@ -39,16 +45,21 @@
 </template>
 
 <script>
+import { login, register } from '../api/user'
+import { saveSession } from '../store/session'
+
 export default {
   name: 'Auth',
   data () {
     return {
       mode: 'login',
+      loading: false,
       message: '',
       form: {
         username: 'admin',
         password: '123456',
-        confirm: ''
+        confirm: '',
+        nickname: ''
       }
     }
   },
@@ -57,9 +68,10 @@ export default {
       this.form.username = 'admin'
       this.form.password = '123456'
       this.form.confirm = '123456'
+      this.form.nickname = '管理员'
       this.message = ''
     },
-    submit () {
+    async submit () {
       if (!this.form.username || !this.form.password) {
         this.message = '请输入用户名和密码。'
         return
@@ -73,23 +85,29 @@ export default {
           this.message = '两次输入的密码不一致。'
           return
         }
-        localStorage.setItem('undercover-user', JSON.stringify({
+      }
+      this.loading = true
+      this.message = ''
+      try {
+        if (this.mode === 'register') {
+          await register({
+            username: this.form.username,
+            password: this.form.password,
+            nickname: this.form.nickname || this.form.username,
+            avatar: 'avatar-player'
+          })
+        }
+        const result = await login({
           username: this.form.username,
           password: this.form.password
-        }))
-        this.message = '注册成功，已为你登录。'
-      } else {
-        const saved = JSON.parse(localStorage.getItem('undercover-user') || 'null')
-        const isDefault = this.form.username === 'admin' && this.form.password === '123456'
-        const isSaved = saved && saved.username === this.form.username && saved.password === this.form.password
-        if (!isDefault && !isSaved) {
-          this.message = '账号或密码错误，默认账号为 admin / 123456。'
-          return
-        }
+        })
+        saveSession(result)
+        this.$router.push('/home')
+      } catch (error) {
+        this.message = error.message || '请求失败，请确认后端服务已启动。'
+      } finally {
+        this.loading = false
       }
-      localStorage.setItem('undercover-auth', 'yes')
-      localStorage.setItem('undercover-current-user', this.form.username)
-      this.$router.push('/home')
     }
   }
 }
