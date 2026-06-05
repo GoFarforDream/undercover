@@ -7,6 +7,7 @@ import AgentNames from '../views/AgentNames.vue'
 import Game from '../views/Game.vue'
 import Result from '../views/Result.vue'
 import RoomDetail from '../views/RoomDetail.vue'
+import JoinWaiting from '../views/JoinWaiting.vue'
 
 Vue.use(Router)
 
@@ -17,6 +18,8 @@ const router = new Router({
     { path: '/login', name: 'login', component: Auth },
     { path: '/home', name: 'home', component: Home },
     { path: '/setup', name: 'setup', component: Setup },
+    { path: '/join-waiting', name: 'joinWaiting', component: JoinWaiting },
+    { path: '/join-waiting/:roomCode', name: 'joinWaitingByCode', component: JoinWaiting },
     { path: '/agents', name: 'agents', component: AgentNames },
     { path: '/room', redirect: '/setup' },
     { path: '/room-detail/:roomCode', name: 'roomDetail', component: RoomDetail },

@@ -12,7 +12,7 @@
         <div class="waiting-hero">
           <span class="eyebrow">Immortal mansion</span>
           <h2>{{ roomCode ? `仙府 ${roomCode}` : '正在凝聚仙府' }}</h2>
-          <p>邀道友同入圆桌。倒计时结束后，空缺仙位会由先天之灵补齐；府主也可随时开启仙缘。</p>
+        <p>邀道友同入圆桌。当前 {{ currentPlayers }} / {{ maxPlayers }} 位仙友已入府；倒计时结束后，空缺仙位会由先天之灵补齐。</p>
         </div>
 
         <div class="countdown-orb">
@@ -32,6 +32,20 @@
         <div v-if="roomCode" class="copy-box">
           <span>仙府令：{{ roomCode }}</span>
           <button type="button" @click="copyRoomCode">复制</button>
+        </div>
+        <div class="room-count-grid host-count-grid">
+          <article>
+            <span>当前人数</span>
+            <strong>{{ currentPlayers }}</strong>
+          </article>
+          <article>
+            <span>仙府上限</span>
+            <strong>{{ maxPlayers }}</strong>
+          </article>
+          <article>
+            <span>剩余补位</span>
+            <strong>{{ remainingSeats }}</strong>
+          </article>
         </div>
         <p v-if="message" class="form-message">{{ message }}</p>
       </div>
@@ -103,7 +117,7 @@
 
 <script>
 import LoadingOverlay from '../components/LoadingOverlay.vue'
-import { createRoom, getRoom, joinRoom, updateRoomSettings } from '../api/room'
+import { createRoom, getRoom, updateRoomSettings } from '../api/room'
 import { getAgentGameState, startAgentGame } from '../api/game'
 import { getCurrentRoomCode, getSeatProfiles, getSettings, normalizeAgentGameState, resetGameState, saveCurrentAgentSessionId, saveCurrentRoomCode, saveGameState, saveSettings } from '../store/game'
 import { getSessionUser } from '../store/session'
@@ -134,13 +148,22 @@ export default {
         name: player.nickname,
         trait: `${player.owner ? '府主' : '真人道友'} · 第 ${player.seatNo} 仙位`
       }))
-      const rest = Math.max(0, 6 - roomSeats.length)
+      const rest = Math.max(0, this.maxPlayers - roomSeats.length)
       const agentSeats = this.seats.slice(1, rest + 1).map((seat, index) => ({
         key: `agent-${index}`,
         name: seat.name,
         trait: `${seat.trait} · 待入定`
       }))
       return roomSeats.concat(agentSeats)
+    },
+    currentPlayers () {
+      return this.room?.players?.length || 0
+    },
+    maxPlayers () {
+      return this.room?.settings?.maxPlayers || 6
+    },
+    remainingSeats () {
+      return Math.max(0, this.maxPlayers - this.currentPlayers)
     },
     isOwner () {
       const user = getSessionUser()
@@ -167,7 +190,7 @@ export default {
     this.ensureRoom()
     this.timer = setInterval(() => {
       if (this.countdown > 0) this.countdown -= 1
-      if (this.roomCode && this.countdown > 0 && this.countdown % 5 === 0) this.loadRoom()
+      if (this.roomCode && this.countdown > 0 && this.countdown % 2 === 0) this.loadRoom()
       if (this.countdown === 0 && this.isOwner && !this.loading) this.start()
     }, 1000)
   },
@@ -201,7 +224,7 @@ export default {
       }
       const routeRoomCode = this.$route.query.roomCode
       if (routeRoomCode) {
-        await this.joinExistingRoom(routeRoomCode)
+        this.$router.replace({ path: '/join-waiting', query: { roomCode: routeRoomCode } })
         return
       }
       if (this.roomCode) {
@@ -220,32 +243,6 @@ export default {
         this.message = '仙府已凝聚，可复制仙府令邀请道友。'
       } catch (error) {
         this.message = error.message || '凝聚仙府失败。'
-      } finally {
-        this.loading = false
-        this.loadingAction = ''
-      }
-    },
-    async joinExistingRoom (roomCode) {
-      const user = getSessionUser()
-      if (!user?.id) {
-        this.message = '仙籍已失效，请重新入仙府。'
-        return
-      }
-      this.loading = true
-      this.loadingAction = 'refresh'
-      this.message = ''
-      try {
-        this.room = await joinRoom({ roomCode, userId: user.id })
-        this.roomCode = this.room.roomCode
-        saveCurrentRoomCode(this.roomCode)
-        resetGameState()
-        const entered = await this.enterStartedRoom()
-        if (entered) return
-        if (this.$route.query.roomCode) {
-          this.$router.replace('/setup')
-        }
-      } catch (error) {
-        this.message = error.message || '进入仙府失败。'
       } finally {
         this.loading = false
         this.loadingAction = ''
