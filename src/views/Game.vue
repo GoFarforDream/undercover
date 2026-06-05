@@ -407,7 +407,6 @@ export default {
         this.loading = false
         this.loadingAction = ''
       }
-    },
     }
   }
 }
