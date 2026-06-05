@@ -7,11 +7,40 @@
       </div>
       <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
     </header>
-    <section class="room-layout">
-      <div class="room-card">
-        <h2>智能体对战参数</h2>
-        <p class="modal-copy">房主可等待玩家加入，也可立即开始。120 秒后未满的座位会由智能体自动补齐；如果 6 人都是真人，则不会补 Agent。</p>
-        <div class="settings-grid compact">
+    <section class="waiting-stage">
+      <div class="waiting-portal">
+        <div class="waiting-hero">
+          <span class="eyebrow">Waiting room</span>
+          <h2>{{ roomCode ? `房间 ${roomCode}` : '正在创建房间' }}</h2>
+          <p>邀请玩家加入圆桌。倒计时结束后，空位会自动由智能体补齐；房主也可以随时立即开始。</p>
+        </div>
+
+        <div class="countdown-orb">
+          <div>
+            <strong>{{ countdown }}</strong>
+            <span>秒后自动开始</span>
+          </div>
+        </div>
+
+        <div class="waiting-actions">
+          <button class="primary-button" type="button" :disabled="loading || !roomCode || !isOwner" @click="start">立即开始</button>
+          <button class="ghost-button" type="button" :disabled="loading || !roomCode" @click="loadRoom">刷新房间</button>
+          <button class="ghost-button" type="button" @click="$router.push('/agents')">设置智能体档案</button>
+          <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
+        </div>
+
+        <div v-if="roomCode" class="copy-box">
+          <span>房号：{{ roomCode }}</span>
+          <button type="button" @click="copyRoomCode">复制</button>
+        </div>
+        <p v-if="message" class="form-message">{{ message }}</p>
+      </div>
+
+      <aside class="waiting-side">
+        <div class="room-card">
+          <h2>开局设置</h2>
+          <p class="modal-copy">手动填写词组会优先使用；留空则按难度生成。</p>
+          <div class="settings-grid compact">
           <label class="setting-row">
             <span>玩家席位托管</span>
             <input v-model="settings.playerAsAgent" type="checkbox">
@@ -22,6 +51,12 @@
               <option>轻松</option>
               <option>标准</option>
               <option>高压</option>
+            </select>
+          </label>
+          <label>
+            词语难度
+            <select v-model="settings.difficulty">
+              <option v-for="difficulty in difficulties" :key="difficulty">{{ difficulty }}</option>
             </select>
           </label>
           <label>
@@ -36,25 +71,27 @@
             发言秒数
             <input v-model.number="settings.roundSeconds" min="30" max="180" step="10" type="number">
           </label>
+          <label>
+            平民词
+            <input v-model.trim="settings.civilianWord" placeholder="留空则按难度生成">
+          </label>
+          <label>
+            卧底词
+            <input v-model.trim="settings.undercoverWord" placeholder="留空则按难度生成">
+          </label>
+          </div>
+          <div class="action-row">
+            <button class="ghost-button" type="button" :disabled="loading" @click="saveLocalSettings">保存设置</button>
+          </div>
         </div>
-        <div class="action-row">
-          <button class="ghost-button" type="button" :disabled="loading" @click="saveLocalSettings">保存设置</button>
-          <button class="ghost-button" type="button" :disabled="loading || !roomCode" @click="loadRoom">刷新房间</button>
-          <button class="primary-button" type="button" :disabled="loading || !roomCode || !isOwner" @click="start">立即开始</button>
-          <button class="ghost-button" type="button" @click="$router.push('/agents')">设置智能体名字</button>
+
+        <div class="waiting-list">
+          <article v-for="seat in roomSeats" :key="seat.key">
+            {{ seat.name }}
+            <span>{{ seat.trait }}</span>
+          </article>
         </div>
-        <div v-if="roomCode" class="copy-box">
-          <span>房号：{{ roomCode }}</span>
-          <button type="button" @click="copyRoomCode">复制</button>
-        </div>
-        <p v-if="message" class="form-message">{{ message }}</p>
-      </div>
-      <div class="waiting-list">
-        <article v-for="seat in roomSeats" :key="seat.key">
-          {{ seat.name }}
-          <span>{{ seat.trait }}</span>
-        </article>
-      </div>
+      </aside>
     </section>
   </main>
 </template>
@@ -74,6 +111,7 @@ export default {
       roomCode: getCurrentRoomCode(),
       countdown: 120,
       timer: null,
+      difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '洞虚', '大帝'],
       loading: false,
       message: ''
     }
@@ -121,6 +159,15 @@ export default {
         voteMode: 'PUBLIC',
         allowSpectator: false
       }
+    },
+    wordPairPayload () {
+      const civilianWord = (this.settings.civilianWord || '').trim()
+      const undercoverWord = (this.settings.undercoverWord || '').trim()
+      if (!civilianWord && !undercoverWord) return null
+      if (!civilianWord || !undercoverWord) {
+        throw new Error('手动词组需要同时填写平民词和卧底词。')
+      }
+      return { civilianWord, undercoverWord }
     },
     async ensureRoom () {
       const user = getSessionUser()
@@ -186,7 +233,9 @@ export default {
           agentCount: 5,
           undercoverCount: this.settings.undercoverCount || 1,
           agentNames: this.settings.agentNames || [],
-          agentPersonalities: this.settings.agentPersonalities || []
+          agentPersonalities: this.settings.agentPersonalities || [],
+          difficulty: this.settings.difficulty || '炼气',
+          wordPair: this.wordPairPayload()
         })
         const normalized = normalizeAgentGameState(gameState, user.id)
         saveCurrentAgentSessionId(normalized.sessionId)

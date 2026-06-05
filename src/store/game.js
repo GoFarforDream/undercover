@@ -11,6 +11,9 @@ const defaultSettings = {
   blankCount: 1,
   roundSeconds: 60,
   agentLevel: '标准',
+  difficulty: '炼气',
+  civilianWord: '',
+  undercoverWord: '',
   agentNames: defaultAgentNames,
   agentPersonalities: defaultAgentPersonalities
 }
