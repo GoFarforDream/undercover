@@ -6,6 +6,7 @@ import Setup from '../views/Room.vue'
 import AgentNames from '../views/AgentNames.vue'
 import Game from '../views/Game.vue'
 import Result from '../views/Result.vue'
+import RoomDetail from '../views/RoomDetail.vue'
 
 Vue.use(Router)
 
@@ -18,6 +19,7 @@ const router = new Router({
     { path: '/setup', name: 'setup', component: Setup },
     { path: '/agents', name: 'agents', component: AgentNames },
     { path: '/room', redirect: '/setup' },
+    { path: '/room-detail/:roomCode', name: 'roomDetail', component: RoomDetail },
     { path: '/game', name: 'game', component: Game },
     { path: '/result', name: 'result', component: Result }
   ]

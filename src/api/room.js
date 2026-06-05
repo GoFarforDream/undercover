@@ -22,6 +22,10 @@ export function listRooms () {
   return request.get('/room/list')
 }
 
+export function deleteRoom (roomCode) {
+  return request.delete(`/room/${roomCode}`)
+}
+
 export function getRoom (roomCode) {
   return request.get(`/room/${roomCode}`)
 }

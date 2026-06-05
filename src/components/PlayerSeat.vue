@@ -4,13 +4,15 @@
     :class="{ active: player.speaking, out: !player.alive, human: player.type === 'human' }"
     :style="positionStyle"
   >
-    <div class="seat-avatar">{{ player.type === 'human' ? 'YOU' : player.id }}</div>
+    <div class="seat-avatar">{{ player.type === 'human' ? '道友' : player.id }}</div>
     <div>
       <strong>{{ player.name }}</strong>
-      <span>{{ player.alive ? (player.speaking ? '正在发言' : status) : '已出局' }}</span>
+      <span>{{ player.alive ? (player.speaking ? '正在陈词' : status) : '已飞升离席' }}</span>
     </div>
-    <i v-if="player.voted">已投</i>
-    <p v-if="player.speechBubble" class="speech-bubble">{{ player.speechBubble }}</p>
+    <i v-if="player.voted">已执令</i>
+    <transition name="speech-pop">
+      <p v-if="player.speechBubble" class="speech-bubble">{{ player.speechBubble }}</p>
+    </transition>
   </article>
 </template>
 
@@ -29,8 +31,8 @@ export default {
   },
   computed: {
     status () {
-      if (this.player.type === 'human') return this.player.voted ? '你已投票' : '由你操控'
-      return this.player.voted ? 'AI 已投票' : this.player.trait
+      if (this.player.type === 'human') return this.player.voted ? '你已执诛仙令' : '由你执掌'
+      return this.player.voted ? '先天之灵已执令' : this.player.trait
     }
   }
 }

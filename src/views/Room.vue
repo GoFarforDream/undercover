@@ -2,35 +2,35 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <span class="eyebrow">房间 {{ roomCode || '创建中' }} · {{ countdown }}s</span>
-        <h1>等待玩家加入</h1>
+        <span class="eyebrow">仙府 {{ roomCode || '凝聚中' }} · {{ countdown }}s</span>
+        <h1>穿越仙界：六大仙修圆桌斩魔</h1>
       </div>
-      <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
+      <button class="ghost-button" type="button" @click="$router.push('/home')">返回仙府首页</button>
     </header>
     <section class="waiting-stage">
       <div class="waiting-portal">
         <div class="waiting-hero">
-          <span class="eyebrow">Waiting room</span>
-          <h2>{{ roomCode ? `房间 ${roomCode}` : '正在创建房间' }}</h2>
-          <p>邀请玩家加入圆桌。倒计时结束后，空位会自动由智能体补齐；房主也可以随时立即开始。</p>
+          <span class="eyebrow">Immortal mansion</span>
+          <h2>{{ roomCode ? `仙府 ${roomCode}` : '正在凝聚仙府' }}</h2>
+          <p>邀道友同入圆桌。倒计时结束后，空缺仙位会由先天之灵补齐；府主也可随时开启仙缘。</p>
         </div>
 
         <div class="countdown-orb">
           <div>
             <strong>{{ countdown }}</strong>
-            <span>秒后自动开始</span>
+            <span>秒后自动开启仙缘</span>
           </div>
         </div>
 
         <div class="waiting-actions">
-          <button class="primary-button" type="button" :disabled="loading || !roomCode || !isOwner" @click="start">立即开始</button>
-          <button class="ghost-button" type="button" :disabled="loading || !roomCode" @click="loadRoom">刷新房间</button>
-          <button class="ghost-button" type="button" @click="$router.push('/agents')">设置智能体档案</button>
-          <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
+          <button class="primary-button" type="button" :disabled="loading || !roomCode || !isOwner" @click="start">开启仙缘</button>
+          <button class="ghost-button" type="button" :disabled="loading || !roomCode" @click="loadRoom(true)">刷新仙府</button>
+          <button class="ghost-button" type="button" @click="$router.push('/agents')">设置先天之灵名册</button>
+          <button class="ghost-button" type="button" @click="$router.push('/home')">返回仙府首页</button>
         </div>
 
         <div v-if="roomCode" class="copy-box">
-          <span>房号：{{ roomCode }}</span>
+          <span>仙府令：{{ roomCode }}</span>
           <button type="button" @click="copyRoomCode">复制</button>
         </div>
         <p v-if="message" class="form-message">{{ message }}</p>
@@ -38,50 +38,50 @@
 
       <aside class="waiting-side">
         <div class="room-card">
-          <h2>开局设置</h2>
-          <p class="modal-copy">手动填写词组会优先使用；留空则按难度生成。</p>
+          <h2>仙府法阵</h2>
+          <p class="modal-copy">手动填写灵契会优先使用；留空则按修为境界生成。</p>
           <div class="settings-grid compact">
           <label class="setting-row">
-            <span>玩家席位托管</span>
+            <span>道友仙位托管</span>
             <input v-model="settings.playerAsAgent" type="checkbox">
           </label>
           <label>
-            智能体强度
+            先天之灵修为
             <select v-model="settings.agentLevel">
-              <option>轻松</option>
-              <option>标准</option>
-              <option>高压</option>
+              <option>清修</option>
+              <option>问道</option>
+              <option>斩魔</option>
             </select>
           </label>
           <label>
-            词语难度
+            灵契难度
             <select v-model="settings.difficulty">
               <option v-for="difficulty in difficulties" :key="difficulty">{{ difficulty }}</option>
             </select>
           </label>
           <label>
-            卧底数量
+            魔修数量
             <input v-model.number="settings.undercoverCount" min="1" max="3" type="number">
           </label>
           <label>
-            白板数量
+            散修数量
             <input v-model.number="settings.blankCount" disabled min="0" max="0" type="number">
           </label>
           <label>
-            发言秒数
+            陈词秒数
             <input v-model.number="settings.roundSeconds" min="30" max="180" step="10" type="number">
           </label>
           <label>
-            平民词
-            <input v-model.trim="settings.civilianWord" placeholder="留空则按难度生成">
+            仙修词
+            <input v-model.trim="settings.civilianWord" placeholder="留空则按境界生成">
           </label>
           <label>
-            卧底词
-            <input v-model.trim="settings.undercoverWord" placeholder="留空则按难度生成">
+            魔修词
+            <input v-model.trim="settings.undercoverWord" placeholder="留空则按境界生成">
           </label>
           </div>
           <div class="action-row">
-            <button class="ghost-button" type="button" :disabled="loading" @click="saveLocalSettings">保存设置</button>
+            <button class="ghost-button" type="button" :disabled="loading" @click="saveLocalSettings">保存仙府法阵</button>
           </div>
         </div>
 
@@ -93,10 +93,16 @@
         </div>
       </aside>
     </section>
+    <loading-overlay
+      :show="loading"
+      :title="loadingTitle"
+      :description="loadingDescription"
+    />
   </main>
 </template>
 
 <script>
+import LoadingOverlay from '../components/LoadingOverlay.vue'
 import { createRoom, getRoom, updateRoomSettings } from '../api/room'
 import { startAgentGame } from '../api/game'
 import { getCurrentRoomCode, getSeatProfiles, getSettings, normalizeAgentGameState, resetGameState, saveCurrentAgentSessionId, saveCurrentRoomCode, saveGameState, saveSettings } from '../store/game'
@@ -104,6 +110,7 @@ import { getSessionUser } from '../store/session'
 
 export default {
   name: 'AgentSetup',
+  components: { LoadingOverlay },
   data () {
     return {
       settings: getSettings(),
@@ -111,8 +118,9 @@ export default {
       roomCode: getCurrentRoomCode(),
       countdown: 120,
       timer: null,
-      difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '洞虚', '大帝'],
+      difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '渡劫', '大帝'],
       loading: false,
+      loadingAction: '',
       message: ''
     }
   },
@@ -124,19 +132,35 @@ export default {
       const roomSeats = (this.room?.players || []).map(player => ({
         key: `human-${player.userId}`,
         name: player.nickname,
-        trait: `${player.owner ? '房主' : '真人玩家'} · ${player.seatNo}号位`
+        trait: `${player.owner ? '府主' : '真人道友'} · 第 ${player.seatNo} 仙位`
       }))
       const rest = Math.max(0, 6 - roomSeats.length)
       const agentSeats = this.seats.slice(1, rest + 1).map((seat, index) => ({
         key: `agent-${index}`,
         name: seat.name,
-        trait: `${seat.trait} · 待补位`
+        trait: `${seat.trait} · 待入定`
       }))
       return roomSeats.concat(agentSeats)
     },
     isOwner () {
       const user = getSessionUser()
       return !this.room || this.room.ownerId === user?.id
+    },
+    loadingTitle () {
+      const titles = {
+        create: '正在凝聚仙府',
+        refresh: '正在刷新仙府',
+        start: '正在开启仙缘'
+      }
+      return titles[this.loadingAction] || '正在请求后端'
+    },
+    loadingDescription () {
+      const descriptions = {
+        create: '正在登记府主与仙位。',
+        refresh: '正在同步最新入府的真人道友。',
+        start: '正在补齐先天之灵、分配灵契并开启仙魔圆桌局。'
+      }
+      return descriptions[this.loadingAction] || '请稍等，圆桌正在同步状态。'
     }
   },
   mounted () {
@@ -165,21 +189,22 @@ export default {
       const undercoverWord = (this.settings.undercoverWord || '').trim()
       if (!civilianWord && !undercoverWord) return null
       if (!civilianWord || !undercoverWord) {
-        throw new Error('手动词组需要同时填写平民词和卧底词。')
+        throw new Error('手动灵契需要同时填写仙修词和魔修词。')
       }
       return { civilianWord, undercoverWord }
     },
     async ensureRoom () {
       const user = getSessionUser()
       if (!user?.id) {
-        this.message = '登录状态已失效，请重新登录。'
+        this.message = '仙籍已失效，请重新入仙府。'
         return
       }
       if (this.roomCode) {
-        await this.loadRoom()
+        await this.loadRoom(true)
         return
       }
       this.loading = true
+      this.loadingAction = 'create'
       try {
         this.room = await createRoom({
           userId: user.id,
@@ -187,42 +212,53 @@ export default {
         })
         this.roomCode = this.room.roomCode
         saveCurrentRoomCode(this.roomCode)
-        this.message = '房间已创建，可复制房号邀请玩家。'
+        this.message = '仙府已凝聚，可复制仙府令邀请道友。'
       } catch (error) {
-        this.message = error.message || '创建房间失败。'
+        this.message = error.message || '凝聚仙府失败。'
       } finally {
         this.loading = false
+        this.loadingAction = ''
       }
     },
-    async loadRoom () {
+    async loadRoom (showBusy = false) {
       if (!this.roomCode) return
+      if (showBusy) {
+        this.loading = true
+        this.loadingAction = 'refresh'
+      }
       try {
         this.room = await getRoom(this.roomCode)
       } catch (error) {
-        this.message = error.message || '房间加载失败。'
+        this.message = error.message || '仙府加载失败。'
+      } finally {
+        if (showBusy) {
+          this.loading = false
+          this.loadingAction = ''
+        }
       }
     },
     saveLocalSettings () {
       saveSettings(this.settings)
-      this.message = '设置已保存。'
+      this.message = '仙府法阵已保存。'
     },
     async copyRoomCode () {
       try {
         await navigator.clipboard.writeText(this.roomCode)
-        this.message = '房号已复制。'
+        this.message = '仙府令已复制。'
       } catch (error) {
-        this.message = `房号：${this.roomCode}`
+        this.message = `仙府令：${this.roomCode}`
       }
     },
     async start () {
       const user = getSessionUser()
       if (!user?.id) {
-        this.message = '登录状态已失效，请重新登录。'
+        this.message = '仙籍已失效，请重新入仙府。'
         return
       }
       saveSettings(this.settings)
       resetGameState()
       this.loading = true
+      this.loadingAction = 'start'
       this.message = ''
       try {
         await updateRoomSettings(this.roomCode, this.roomSettingsPayload())
@@ -242,9 +278,10 @@ export default {
         saveGameState(normalized)
         this.$router.push('/game')
       } catch (error) {
-        this.message = error.message || '开局失败。'
+        this.message = error.message || '开启仙缘失败。'
       } finally {
         this.loading = false
+        this.loadingAction = ''
       }
     }
   }

@@ -36,6 +36,10 @@ export function runAgentSpeech (sessionId) {
   return request.post(`/agent-game/agent-speech/${sessionId}`, null, { timeout: 120000 })
 }
 
+export function runAgentSpeechForPlayer (sessionId, playerId) {
+  return request.post(`/agent-game/agent-speech/${sessionId}/${playerId}`, null, { timeout: 120000 })
+}
+
 export function submitAgentVote (payload) {
   return request.post('/agent-game/vote', payload)
 }

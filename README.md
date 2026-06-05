@@ -1,30 +1,30 @@
-# 谁是卧底
+# 穿越仙界：六大仙修圆桌斩魔
 
 ```bash
 src/
 ├── views/
-│   ├── Home.vue          # 首页/房间列表
-│   ├── Room.vue          # 房间创建/加入页面
-│   ├── Game.vue          # 游戏主界面（核心）
-│   └── Result.vue        # 游戏结算页
+│   ├── Home.vue          # 仙府首页/仙府记录
+│   ├── Room.vue          # 仙府创建/仙友入定页面
+│   ├── Game.vue          # 仙魔圆桌主界面（核心）
+│   └── Result.vue        # 仙魔终局页
 ├── components/
 │   ├── common/           # 通用组件（按钮、弹窗、加载中）
-│   └── game/             # 游戏专属组件
-│       ├── PlayerCard.vue    # 玩家卡片（显示身份/发言状态）
-│       ├── WordCard.vue      # 词卡组件（显示卧底词/平民词）
-│       └── VotePanel.vue     # 投票面板
+│   └── game/             # 仙魔圆桌专属组件
+│       ├── PlayerCard.vue    # 仙友卡片（显示仙魔身份/陈词状态）
+│       ├── WordCard.vue      # 灵契组件（显示魔修词/仙修词）
+│       └── VotePanel.vue     # 诛仙令面板
 ├── api/
-│   ├── room.js           # 房间相关接口
-│   ├── game.js           # 游戏流程接口
-│   └── user.js           # 用户相关接口
+│   ├── room.js           # 仙府相关接口
+│   ├── game.js           # 仙魔局流程接口
+│   └── user.js           # 仙友相关接口
 ├── store/
 │   ├── index.js          # 状态管理入口
 │   ├── modules/
-│   │   ├── room.js       # 房间状态
-│   │   └── game.js       # 游戏状态（轮次、词库、玩家状态）
+│   │   ├── room.js       # 仙府状态
+│   │   └── game.js       # 仙魔局状态（轮次、灵契、仙友状态）
 └── utils/
-    ├── word.js           # 词库处理工具（随机生成卧底词）
-    └── game.js           # 游戏逻辑工具（洗牌、投票统计）
+    ├── word.js           # 灵契处理工具（随机生成魔修词）
+    └── game.js           # 仙魔局逻辑工具（洗牌、诛仙令统计）
 ```
 
 ## Project setup

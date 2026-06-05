@@ -2,38 +2,44 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <span class="eyebrow">智能体档案</span>
-        <h1>设置智能体名字</h1>
+        <span class="eyebrow">先天之灵名册</span>
+        <h1>穿越仙界：六大仙修圆桌斩魔</h1>
       </div>
       <nav>
-        <button class="ghost-button" type="button" @click="$router.push('/setup')">返回配置</button>
-        <button class="ghost-button" type="button" @click="$router.push('/home')">返回首页</button>
+        <button class="ghost-button" type="button" @click="$router.push('/setup')">返回仙府法阵</button>
+        <button class="ghost-button" type="button" @click="$router.push('/home')">返回仙府首页</button>
       </nav>
     </header>
 
     <section class="agent-name-layout">
       <div class="room-card">
-        <h2>5+1的卧底局</h2>
-        <p class="modal-copy">玩家昵称只展示不可在此修改；下面 5 个智能体名字和性格会用于圆桌卡片、发言、投票和结算。</p>
+        <h2>五位先天之灵与一位道友</h2>
+        <p class="modal-copy">道友仙名只展示不可在此修改；下面五位先天之灵的名号和性格会用于圆桌卡片、陈词、诛仙令和终局卷轴。</p>
 
         <label class="readonly-field">
-          玩家昵称
+          道友仙名
           <input :value="playerName" disabled>
         </label>
 
-        <div class="agent-name-grid">
-          <label v-for="(name, index) in form.agentNames" :key="index">
-            {{ labels[index] }}
-            <input v-model.trim="form.agentNames[index]" :placeholder="defaults[index]">
-          </label>
-          <label v-for="(personality, index) in form.agentPersonalities" :key="`p-${index}`">
-            {{ personalityLabels[index] }}
-            <textarea v-model.trim="form.agentPersonalities[index]" rows="3" :placeholder="personalityDefaults[index]"></textarea>
-          </label>
+        <div class="agent-card-grid">
+          <article v-for="index in 5" :key="index" class="agent-edit-card">
+            <div>
+              <span>{{ labels[index - 1] }}</span>
+              <strong>{{ normalizedNames[index - 1] }}</strong>
+            </div>
+            <label>
+              名号
+              <input v-model.trim="form.agentNames[index - 1]" :placeholder="defaults[index - 1]">
+            </label>
+            <label>
+              性格
+              <textarea v-model.trim="form.agentPersonalities[index - 1]" rows="3" :placeholder="personalityDefaults[index - 1]"></textarea>
+            </label>
+          </article>
         </div>
         <div class="modal-actions">
-          <button class="ghost-button" type="button" @click="resetNames">恢复默认</button>
-          <button class="primary-button" type="button" @click="save">保存档案</button>
+          <button class="ghost-button" type="button" @click="resetNames">恢复默认先天之灵</button>
+          <button class="primary-button" type="button" @click="save">保存先天之灵名册</button>
         </div>
         <p v-if="message" class="form-message">{{ message }}</p>
       </div>
@@ -41,7 +47,7 @@
       <div class="waiting-list">
         <article>
           {{ playerName }}
-          <span>真人玩家 / 可托管</span>
+          <span>真人道友 / 可托管仙位</span>
         </article>
         <article v-for="(name, index) in normalizedNames" :key="index">
           {{ name }}
@@ -68,8 +74,7 @@ export default {
       },
       defaults: defaultAgentNames,
       personalityDefaults: defaultAgentPersonalities,
-      labels: ['智能体 Agent 01', '智能体 Agent 02', '智能体 Agent 03', '智能体 Agent 04', '智能体 Agent 05'],
-      personalityLabels: ['Agent 01 性格', 'Agent 02 性格', 'Agent 03 性格', 'Agent 04 性格', 'Agent 05 性格'],
+      labels: ['先天之灵 01', '先天之灵 02', '先天之灵 03', '先天之灵 04', '先天之灵 05'],
       message: ''
     }
   },
@@ -85,7 +90,7 @@ export default {
     resetNames () {
       this.form.agentNames = [...this.defaults]
       this.form.agentPersonalities = [...this.personalityDefaults]
-      this.message = '已恢复默认档案，保存后生效。'
+      this.message = '已恢复默认先天之灵名册，保存后生效。'
     },
     save () {
       const names = this.normalizedNames.map(name => name.slice(0, 14))
@@ -98,7 +103,7 @@ export default {
       resetGameState()
       this.form.agentNames = [...names]
       this.form.agentPersonalities = [...personalities]
-      this.message = '已保存。下一局会使用新的智能体档案。'
+      this.message = '已保存。下一局仙魔圆桌会使用新的先天之灵名册。'
     }
   }
 }

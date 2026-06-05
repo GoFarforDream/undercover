@@ -2,54 +2,57 @@
   <main class="auth-page">
     <div class="scanlines"></div>
     <section class="auth-hero">
-      <p class="eyebrow">Undercover party game</p>
-      <h1>谁是卧底</h1>
-      <p>隐藏身份，控制发言节奏，在投票前读懂每一次停顿。</p>
+      <p class="eyebrow">仙魔圆桌局</p>
+      <h1>穿越仙界：六大仙修圆桌斩魔</h1>
+      <p>隐匿仙魔真身，掌控陈词节奏，在诛仙令落下前看破每一道气息。</p>
       <div class="hero-stats">
-        <span><b>6</b> 推荐人数</span>
-        <span><b>60s</b> 发言节奏</span>
-        <span><b>3</b> 回合复盘</span>
+        <span><b>6</b> 仙修圆桌</span>
+        <span><b>60s</b> 陈词节奏</span>
+        <span><b>7</b> 修为境界</span>
       </div>
     </section>
 
     <section class="auth-card">
       <div class="tab-switch">
-        <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">登录</button>
-        <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">注册</button>
+        <button :class="{ active: mode === 'login' }" type="button" @click="mode = 'login'">入仙府</button>
+        <button :class="{ active: mode === 'register' }" type="button" @click="mode = 'register'">立仙籍</button>
       </div>
       <form @submit.prevent="submit">
         <label>
-          用户名
+          道号
           <input v-model.trim="form.username" autocomplete="username" placeholder="admin">
         </label>
         <label>
-          密码
+          密令
           <input v-model="form.password" autocomplete="current-password" placeholder="123456" type="password">
         </label>
         <label v-if="mode === 'register'">
-          确认密码
-          <input v-model="form.confirm" autocomplete="new-password" placeholder="再次输入密码" type="password">
+          确认密令
+          <input v-model="form.confirm" autocomplete="new-password" placeholder="再次输入密令" type="password">
         </label>
         <label v-if="mode === 'register'">
-          昵称
-          <input v-model.trim="form.nickname" autocomplete="nickname" placeholder="游戏内显示名">
+          仙名
+          <input v-model.trim="form.nickname" autocomplete="nickname" placeholder="仙府内显示名">
         </label>
         <p v-if="message" class="form-message">{{ message }}</p>
         <button class="primary-button full" type="submit" :disabled="loading">
-          {{ loading ? '处理中...' : (mode === 'login' ? '进入大厅' : '创建玩家档案') }}
+          {{ loading ? '仙府通传中...' : (mode === 'login' ? '进入仙府' : '创建仙籍') }}
         </button>
       </form>
-      <button class="text-button" type="button" @click="quickFill">使用默认账号 admin / 123456</button>
+      <button class="text-button" type="button" @click="quickFill">使用默认道号 admin / 123456</button>
     </section>
+    <loading-overlay :show="loading" title="正在进入仙府" description="正在校验道号并同步道友档案。" />
   </main>
 </template>
 
 <script>
+import LoadingOverlay from '../components/LoadingOverlay.vue'
 import { login, register } from '../api/user'
 import { saveSession } from '../store/session'
 
 export default {
   name: 'Auth',
+  components: { LoadingOverlay },
   data () {
     return {
       mode: 'login',
@@ -68,21 +71,21 @@ export default {
       this.form.username = 'admin'
       this.form.password = '123456'
       this.form.confirm = '123456'
-      this.form.nickname = '管理员'
+      this.form.nickname = '掌令道友'
       this.message = ''
     },
     async submit () {
       if (!this.form.username || !this.form.password) {
-        this.message = '请输入用户名和密码。'
+        this.message = '请输入道号和密令。'
         return
       }
       if (this.mode === 'register') {
         if (this.form.password.length < 6) {
-          this.message = '密码至少 6 位。'
+          this.message = '密令至少 6 位。'
           return
         }
         if (this.form.password !== this.form.confirm) {
-          this.message = '两次输入的密码不一致。'
+          this.message = '两次输入的密令不一致。'
           return
         }
       }
@@ -104,7 +107,7 @@ export default {
         saveSession(result)
         this.$router.push('/home')
       } catch (error) {
-        this.message = error.message || '请求失败，请确认后端服务已启动。'
+        this.message = error.message || '仙府传讯失败，请确认后端法阵已启动。'
       } finally {
         this.loading = false
       }

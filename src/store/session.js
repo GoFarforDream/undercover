@@ -4,7 +4,7 @@ export function saveSession (loginResult) {
     localStorage.setItem('undercover-token', loginResult.token)
   }
   localStorage.setItem('undercover-auth', 'yes')
-  localStorage.setItem('undercover-current-user', user.nickname || user.username || '玩家')
+  localStorage.setItem('undercover-current-user', user.nickname || user.username || '道友')
   localStorage.setItem('undercover-user-profile', JSON.stringify(user))
   return user
 }
