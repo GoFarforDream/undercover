@@ -40,6 +40,14 @@ export function runAgentSpeechForPlayer (sessionId, playerId) {
   return request.post(`/agent-game/agent-speech/${sessionId}/${playerId}`, null, { timeout: 120000 })
 }
 
+export function advanceAgentSpeech (sessionId) {
+  return request.post(`/agent-game/advance-speech/${sessionId}`, null, { timeout: 120000 })
+}
+
+export function advanceAgentSpeechTimeout (sessionId, playerId) {
+  return request.post(`/agent-game/advance-speech/${sessionId}/timeout/${playerId}`, null, { timeout: 120000 })
+}
+
 export function submitAgentVote (payload) {
   return request.post('/agent-game/vote', payload)
 }
@@ -50,6 +58,14 @@ export function runAgentVote (sessionId) {
 
 export function resolveAgentRound (sessionId) {
   return request.post(`/agent-game/resolve/${sessionId}`, null, { timeout: 120000 })
+}
+
+export function advanceAgentVote (sessionId) {
+  return request.post(`/agent-game/advance-vote/${sessionId}`, null, { timeout: 120000 })
+}
+
+export function advanceAgentVoteTimeout (sessionId, playerId) {
+  return request.post(`/agent-game/advance-vote/${sessionId}/timeout/${playerId}`, null, { timeout: 120000 })
 }
 
 export function nextAgentRound (sessionId) {

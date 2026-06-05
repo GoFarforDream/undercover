@@ -285,7 +285,6 @@ export function normalizeAgentGameState (backendState, currentUserId) {
   const speeches = backendState.speeches || []
   const rawVotes = backendState.votes || []
   const currentRoundSpeeches = speeches.filter(speech => String(speech.round_no) === String(session.round_no))
-  const latestSpeech = currentRoundSpeeches[currentRoundSpeeches.length - 1]
   const speechByPlayer = {}
   currentRoundSpeeches.forEach(speech => {
     speechByPlayer[String(speech.player_id)] = speech
@@ -295,11 +294,12 @@ export function normalizeAgentGameState (backendState, currentUserId) {
     userId: player.user_id,
     name: player.nickname || `道友 ${index + 1}`,
     type: player.player_type === 'HUMAN' || player.user_id === currentUserId ? 'human' : 'ai',
+    isMe: player.user_id === currentUserId,
     role: roleText(player.role),
     rawRole: player.role,
     word: player.word,
     alive: truthy(player.alive),
-    speaking: latestSpeech ? String(latestSpeech.player_id) === String(player.id) : (session.phase === 'SPEAKING' && index === 0),
+    speaking: String(backendState.pendingSpeakerId || backendState.pendingVoterId || '') === String(player.id),
     voted: rawVotes.some(vote => String(vote.voter_player_id) === String(player.id) && String(vote.round_no) === String(session.round_no)),
     trait: player.player_type === 'HUMAN' ? '真人道友' : (player.personality || '先天之灵'),
     speechBubble: speechByPlayer[String(player.id)]
@@ -341,6 +341,10 @@ export function normalizeAgentGameState (backendState, currentUserId) {
     mode: 'agent',
     matchId: session.id ? `仙府-${session.id}` : '未开仙府',
     sessionId: session.id,
+    pendingSpeakerId: backendState.pendingSpeakerId,
+    pendingSpeakerType: backendState.pendingSpeakerType,
+    pendingVoterId: backendState.pendingVoterId,
+    pendingVoterType: backendState.pendingVoterType,
     round: session.round_no || 1,
     phase: phaseText(session.phase),
     rawPhase: session.phase,

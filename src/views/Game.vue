@@ -25,7 +25,7 @@
         <div class="table-center" :class="{ thinking: loading, deliberating: isAgentSpeaking }">
           <span>{{ state.phase }}</span>
           <strong>{{ activePlayer.name }}</strong>
-          <small>{{ loading ? loadingHint : (activePlayer.type === 'human' ? '轮到你陈词' : '先天之灵观星中') }}</small>
+          <small>{{ loading ? loadingHint : turnHint }}</small>
           <div v-if="isAgentSpeaking" class="thought-runes" aria-hidden="true">
             <i></i>
             <i></i>
@@ -62,10 +62,10 @@
         v-model="newLog"
         rows="2"
         :disabled="loading || isFinished"
-        placeholder="道友，请在此陈词。"
+        :placeholder="canSpeak ? '道友，请在此陈词。' : '正在等待其他道友或先天之灵陈词。'"
         @keydown.ctrl.enter.prevent="addLog"
       ></textarea>
-      <button class="primary-button" type="button" :disabled="loading || isFinished || !newLog.trim()" @click="addLog">发言</button>
+      <button class="primary-button" type="button" :disabled="loading || isFinished || !canSpeak || !newLog.trim()" @click="addLog">发言</button>
     </section>
 
     <section class="vote-strip">
@@ -74,7 +74,7 @@
         <strong>{{ vote.count }} 道令</strong>
         <i :style="{ width: vote.count * 24 + '%' }"></i>
       </div>
-      <button class="danger-button" type="button" :disabled="loading || isFinished" @click="voteOpen = true">{{ isHosted ? '托管仙位执诛仙令' : '执我的诛仙令' }}</button>
+      <button class="danger-button" type="button" :disabled="loading || isFinished || !canVote" @click="voteOpen = true">{{ isHosted ? '托管仙位执诛仙令' : '执我的诛仙令' }}</button>
       <button class="primary-button" type="button" @click="$router.push('/result')">查看仙魔终局</button>
     </section>
 
@@ -109,7 +109,7 @@ import LoadingOverlay from '../components/LoadingOverlay.vue'
 import PlayerSeat from '../components/PlayerSeat.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import { getCurrentAgentSessionId, getCurrentRoomCode, getGameState, getSettings, normalizeAgentGameState, normalizeBackendGameState, saveGameState, saveSettings } from '../store/game'
-import { getAgentGameState, getGameStateApi, nextAgentRound, resolveAgentRound, runAgentSpeechForPlayer, runAgentVote, submitAgentSpeech, submitAgentVote, submitSpeech, submitVote } from '../api/game'
+import { getAgentGameState, getGameStateApi, submitAgentSpeech, submitAgentVote, submitSpeech, submitVote } from '../api/game'
 import { getSessionUser } from '../store/session'
 
 export default {
@@ -134,6 +134,7 @@ export default {
       agentThinking: false,
       thinkingCountdown: 0,
       thinkingTimer: null,
+      pollTimer: null,
       sessionId: getCurrentAgentSessionId(),
       roomCode: getCurrentRoomCode()
     }
@@ -164,6 +165,22 @@ export default {
     },
     isAgentSpeaking () {
       return this.loadingAction === 'agentSpeech' || this.loadingAction === 'agentThinking'
+    },
+    pendingPlayer () {
+      const pendingId = this.state.rawPhase === 'VOTING' ? this.state.pendingVoterId : this.state.pendingSpeakerId
+      return this.state.players.find(player => String(player.id) === String(pendingId))
+    },
+    canSpeak () {
+      return this.state.rawPhase === 'SPEAKING' && this.pendingPlayer?.isMe
+    },
+    canVote () {
+      return this.state.rawPhase === 'VOTING' && this.pendingPlayer?.isMe
+    },
+    turnHint () {
+      if (!this.pendingPlayer) return this.state.rawPhase === 'VOTING' ? '等待诛仙令' : '等待圆桌推进'
+      if (this.pendingPlayer.isMe) return this.state.rawPhase === 'VOTING' ? '轮到你执诛仙令' : '轮到你陈词'
+      if (this.pendingPlayer.type === 'human') return `等待 ${this.pendingPlayer.name}，超时后先天之灵托管`
+      return '先天之灵观星中'
     },
     showLoadingOverlay () {
       return this.loading && this.loadingAction !== 'agentSpeech' && this.loadingAction !== 'agentThinking'
@@ -204,8 +221,10 @@ export default {
   },
   mounted () {
     this.refreshState()
+    this.pollTimer = window.setInterval(() => this.refreshState(), 3000)
   },
   beforeDestroy () {
+    if (this.pollTimer) window.clearInterval(this.pollTimer)
     this.clearThinkingTimer()
     this.clearBubbleTimer()
   },
@@ -315,7 +334,6 @@ export default {
           saveGameState(this.state)
           this.newLog = ''
           this.showOnlyBubble(this.state.humanPlayerId, speechContent)
-          await this.autoAgentSpeech(user)
         } else {
           const backendState = await submitSpeech({
             roomCode: this.roomCode,
@@ -333,28 +351,6 @@ export default {
         this.loading = false
         this.loadingAction = ''
       }
-    },
-    async autoAgentSpeech (user) {
-      if (!this.sessionId || this.isFinished) return
-      const spoken = this.latestRoundSpeechByPlayer()
-      const agents = this.playersAfterCurrentHuman()
-        .filter(player => player.alive && player.type === 'ai' && !spoken[String(player.id)])
-      for (let index = 0; index < agents.length; index++) {
-        const agent = agents[index]
-        if (this.isFinished) return
-        this.loadingAction = 'agentSpeech'
-        this.message = `${agent.name} 正在观星陈词...`
-        this.showOnlyBubble(agent.id, '凝神推演中...', 0)
-        const backendState = await runAgentSpeechForPlayer(this.sessionId, agent.id)
-        this.state = normalizeAgentGameState(backendState, user?.id)
-        saveGameState(this.state)
-        const latestSpeech = this.latestRoundSpeechByPlayer(this.state)[String(agent.id)]
-        this.showOnlyBubble(agent.id, this.cleanBubbleText(latestSpeech?.content, agent.name))
-        if (index < agents.length - 1) {
-          await this.wait(5000)
-        }
-      }
-      this.message = '先天之灵已顺时针完成本轮陈词，请执诛仙令。'
     },
     pauseAgentThinking () {
       this.clearThinkingTimer()
@@ -395,7 +391,6 @@ export default {
           this.state = normalizeAgentGameState(backendState, user.id)
           saveGameState(this.state)
           this.voteOpen = false
-          await this.autoAgentVoteResolve(user)
         } else {
           const backendState = await submitVote({
             roomCode: this.roomCode,
@@ -413,36 +408,6 @@ export default {
         this.loadingAction = ''
       }
     },
-    async autoAgentVoteResolve (user) {
-      if (!this.sessionId || this.isFinished) return
-      this.loadingAction = 'agentVote'
-      this.message = '先天之灵正在执令并斩魔...'
-      await runAgentVote(this.sessionId)
-      let backendState = await getAgentGameState(this.sessionId)
-      this.state = normalizeAgentGameState(backendState, user?.id)
-      saveGameState(this.state)
-      try {
-        backendState = await resolveAgentRound(this.sessionId)
-      } catch (error) {
-        if ((error.message || '').indexOf('未投票') !== -1) {
-          this.message = '先天之灵已完成诛仙令，正在等待其他真人道友执令。'
-          return
-        }
-        throw error
-      }
-      this.state = normalizeAgentGameState(backendState, user?.id)
-      saveGameState(this.state)
-      if (this.state.rawPhase === 'FINISHED') {
-        this.message = '仙魔终局已定，正在打开终局卷轴。'
-        this.$router.push('/result')
-        return
-      }
-      this.loadingAction = 'nextRound'
-      this.message = '本轮已斩定，正在开启下一轮仙缘...'
-      backendState = await nextAgentRound(this.sessionId)
-      this.state = normalizeAgentGameState(backendState, user?.id)
-      saveGameState(this.state)
-      this.message = '新一轮仙缘已启，请继续陈词。'
     }
   }
 }
