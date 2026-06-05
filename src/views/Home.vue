@@ -166,7 +166,7 @@ export default {
         const room = await joinRoom({ roomCode, userId: user.id })
         saveCurrentRoomCode(room.roomCode)
         resetGameState()
-        this.$router.push('/setup')
+        this.$router.push({ path: '/setup', query: { roomCode: room.roomCode } })
       } catch (error) {
         this.message = error.message || '进入仙府失败。'
       } finally {

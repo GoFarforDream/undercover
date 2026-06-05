@@ -306,7 +306,7 @@ export function normalizeAgentGameState (backendState, currentUserId) {
       ? stripSpeakerName(speechByPlayer[String(player.id)].content, player.nickname)
       : ''
   }))
-  const currentPlayer = players.find(player => player.userId === currentUserId || player.type === 'human') || players[0] || {}
+  const currentPlayer = players.find(player => player.userId === currentUserId) || players.find(player => player.type === 'human') || players[0] || {}
   const voteCounts = {}
   rawVotes
     .filter(vote => String(vote.round_no) === String(session.round_no))

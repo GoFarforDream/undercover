@@ -103,8 +103,8 @@
 
 <script>
 import LoadingOverlay from '../components/LoadingOverlay.vue'
-import { createRoom, getRoom, updateRoomSettings } from '../api/room'
-import { startAgentGame } from '../api/game'
+import { createRoom, getRoom, joinRoom, updateRoomSettings } from '../api/room'
+import { getAgentGameState, startAgentGame } from '../api/game'
 import { getCurrentRoomCode, getSeatProfiles, getSettings, normalizeAgentGameState, resetGameState, saveCurrentAgentSessionId, saveCurrentRoomCode, saveGameState, saveSettings } from '../store/game'
 import { getSessionUser } from '../store/session'
 
@@ -115,7 +115,7 @@ export default {
     return {
       settings: getSettings(),
       room: null,
-      roomCode: getCurrentRoomCode(),
+      roomCode: this.$route.query.roomCode || getCurrentRoomCode(),
       countdown: 120,
       timer: null,
       difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '渡劫', '大帝'],
@@ -199,6 +199,11 @@ export default {
         this.message = '仙籍已失效，请重新入仙府。'
         return
       }
+      const routeRoomCode = this.$route.query.roomCode
+      if (routeRoomCode) {
+        await this.joinExistingRoom(routeRoomCode)
+        return
+      }
       if (this.roomCode) {
         await this.loadRoom(true)
         return
@@ -220,6 +225,32 @@ export default {
         this.loadingAction = ''
       }
     },
+    async joinExistingRoom (roomCode) {
+      const user = getSessionUser()
+      if (!user?.id) {
+        this.message = '仙籍已失效，请重新入仙府。'
+        return
+      }
+      this.loading = true
+      this.loadingAction = 'refresh'
+      this.message = ''
+      try {
+        this.room = await joinRoom({ roomCode, userId: user.id })
+        this.roomCode = this.room.roomCode
+        saveCurrentRoomCode(this.roomCode)
+        resetGameState()
+        const entered = await this.enterStartedRoom()
+        if (entered) return
+        if (this.$route.query.roomCode) {
+          this.$router.replace('/setup')
+        }
+      } catch (error) {
+        this.message = error.message || '进入仙府失败。'
+      } finally {
+        this.loading = false
+        this.loadingAction = ''
+      }
+    },
     async loadRoom (showBusy = false) {
       if (!this.roomCode) return
       if (showBusy) {
@@ -228,6 +259,7 @@ export default {
       }
       try {
         this.room = await getRoom(this.roomCode)
+        await this.enterStartedRoom()
       } catch (error) {
         this.message = error.message || '仙府加载失败。'
       } finally {
@@ -236,6 +268,17 @@ export default {
           this.loadingAction = ''
         }
       }
+    },
+    async enterStartedRoom () {
+      const user = getSessionUser()
+      const sessionId = this.room?.sessionId
+      if (!user?.id || !sessionId || this.room.status !== 'PLAYING') return false
+      const gameState = await getAgentGameState(sessionId)
+      const normalized = normalizeAgentGameState(gameState, user.id)
+      saveCurrentAgentSessionId(normalized.sessionId)
+      saveGameState(normalized)
+      this.$router.push('/game')
+      return true
     },
     saveLocalSettings () {
       saveSettings(this.settings)
