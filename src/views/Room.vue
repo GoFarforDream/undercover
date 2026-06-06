@@ -308,6 +308,7 @@ export default {
           maxPlayers: 6,
           agentCount: 5,
           undercoverCount: this.settings.undercoverCount || 1,
+          playerAsAgent: Boolean(this.settings.playerAsAgent),
           agentNames: this.settings.agentNames || [],
           agentPersonalities: this.settings.agentPersonalities || [],
           difficulty: this.settings.difficulty || '炼气',

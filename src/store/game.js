@@ -293,7 +293,7 @@ export function normalizeAgentGameState (backendState, currentUserId) {
     id: player.id,
     userId: player.user_id,
     name: player.nickname || `道友 ${index + 1}`,
-    type: player.player_type === 'HUMAN' || player.user_id === currentUserId ? 'human' : 'ai',
+    type: player.player_type === 'HUMAN' ? 'human' : 'ai',
     isMe: player.user_id === currentUserId,
     role: roleText(player.role),
     rawRole: player.role,
@@ -301,7 +301,7 @@ export function normalizeAgentGameState (backendState, currentUserId) {
     alive: truthy(player.alive),
     speaking: String(backendState.pendingSpeakerId || backendState.pendingVoterId || '') === String(player.id),
     voted: rawVotes.some(vote => String(vote.voter_player_id) === String(player.id) && String(vote.round_no) === String(session.round_no)),
-    trait: player.player_type === 'HUMAN' ? '真人道友' : (player.personality || '先天之灵'),
+    trait: player.player_type === 'HUMAN' ? '真人道友' : (player.user_id === currentUserId ? '托管仙位' : (player.personality || '先天之灵')),
     speechBubble: speechByPlayer[String(player.id)]
       ? stripSpeakerName(speechByPlayer[String(player.id)].content, player.nickname)
       : ''

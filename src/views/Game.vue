@@ -171,10 +171,10 @@ export default {
       return this.state.players.find(player => String(player.id) === String(pendingId))
     },
     canSpeak () {
-      return this.state.rawPhase === 'SPEAKING' && this.pendingPlayer?.isMe
+      return this.state.rawPhase === 'SPEAKING' && this.pendingPlayer?.isMe && this.pendingPlayer?.type === 'human'
     },
     canVote () {
-      return this.state.rawPhase === 'VOTING' && this.pendingPlayer?.isMe
+      return this.state.rawPhase === 'VOTING' && this.pendingPlayer?.isMe && this.pendingPlayer?.type === 'human'
     },
     turnHint () {
       if (!this.pendingPlayer) return this.state.rawPhase === 'VOTING' ? '等待诛仙令' : '等待圆桌推进'
