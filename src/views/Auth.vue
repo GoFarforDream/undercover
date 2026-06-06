@@ -20,11 +20,11 @@
       <form @submit.prevent="submit">
         <label>
           道号
-          <input v-model.trim="form.username" autocomplete="username" placeholder="admin">
+          <input v-model.trim="form.username" autocomplete="username" placeholder="请输入道号">
         </label>
         <label>
           密令
-          <input v-model="form.password" autocomplete="current-password" placeholder="123456" type="password">
+          <input v-model="form.password" autocomplete="current-password" placeholder="请输入密令" type="password">
         </label>
         <label v-if="mode === 'register'">
           确认密令
@@ -32,14 +32,13 @@
         </label>
         <label v-if="mode === 'register'">
           仙名
-          <input v-model.trim="form.nickname" autocomplete="nickname" placeholder="仙府内显示名">
+          <input v-model.trim="form.nickname" autocomplete="nickname" placeholder="请输入仙府昵称">
         </label>
         <p v-if="message" class="form-message">{{ message }}</p>
         <button class="primary-button full" type="submit" :disabled="loading">
           {{ loading ? '仙府通传中...' : (mode === 'login' ? '进入仙府' : '创建仙籍') }}
         </button>
       </form>
-      <button class="text-button" type="button" @click="quickFill">使用默认道号 admin / 123456</button>
     </section>
     <loading-overlay :show="loading" title="正在进入仙府" description="正在校验道号并同步道友档案。" />
   </main>
@@ -59,21 +58,14 @@ export default {
       loading: false,
       message: '',
       form: {
-        username: 'admin',
-        password: '123456',
+        username: '',
+        password: '',
         confirm: '',
         nickname: ''
       }
     }
   },
   methods: {
-    quickFill () {
-      this.form.username = 'admin'
-      this.form.password = '123456'
-      this.form.confirm = '123456'
-      this.form.nickname = '掌令道友'
-      this.message = ''
-    },
     async submit () {
       if (!this.form.username || !this.form.password) {
         this.message = '请输入道号和密令。'
