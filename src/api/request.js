@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const service = axios.create({
-  baseURL: 'http://uc.voyagers.work:8081/api',
+  baseURL: 'http://127.0.0.1:8081/api',
   timeout: 90000,
   headers: {
     'Content-Type': 'application/json'
