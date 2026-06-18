@@ -2,27 +2,27 @@
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <span class="eyebrow">仙府 {{ roomCode || '入府中' }}</span>
-        <h1>等待仙友开局</h1>
+        <span class="eyebrow">房间 {{ roomCode || '加入中' }}</span>
+        <h1>等待房主开局</h1>
       </div>
-      <button class="ghost-button" type="button" @click="$router.push('/home')">返回仙府首页</button>
+      <button class="ghost-button" type="button" @click="$router.push('/home')">返回房间首页</button>
     </header>
 
     <section class="waiting-stage join-waiting-stage">
       <div class="waiting-portal join-waiting-portal">
         <div class="waiting-hero">
-          <span class="eyebrow">Joined immortal mansion</span>
-          <h2>{{ ownerName ? `已匹配府主：${ownerName}` : '正在匹配府主' }}</h2>
-          <p>你已进入同一座仙府。请等待府主开启仙缘；开局后会自动进入同一场仙魔圆桌局。</p>
+          <span class="eyebrow">Joined room</span>
+          <h2>{{ ownerName ? `已加入房主：${ownerName}` : '正在匹配房主' }}</h2>
+          <p>你已进入同一房间。请等待房主开启游戏，开局后会自动进入同一场谁是卧底对局。</p>
         </div>
 
         <div class="join-waiting-status">
-          <strong>等待仙友开局</strong>
+          <strong>等待房主开局</strong>
           <span>{{ playerCountText }}</span>
         </div>
 
         <div v-if="roomCode" class="copy-box">
-          <span>仙府令：{{ roomCode }}</span>
+          <span>房间码：{{ roomCode }}</span>
           <button type="button" @click="copyRoomCode">复制</button>
         </div>
         <p v-if="message" class="form-message">{{ message }}</p>
@@ -30,15 +30,15 @@
 
       <aside class="waiting-side">
         <div class="room-card">
-          <h2>当前仙府</h2>
-          <p class="modal-copy">府主开启仙缘后，所有已入府真人道友会进入同一局；剩余席位由先天之灵补齐。</p>
+          <h2>当前房间</h2>
+          <p class="modal-copy">房主开启游戏后，所有已加入的真人玩家会进入同一局，剩余席位由 Agent 补齐。</p>
           <div class="room-count-grid">
             <article>
               <span>当前人数</span>
               <strong>{{ currentPlayers }}</strong>
             </article>
             <article>
-              <span>仙府上限</span>
+              <span>房间上限</span>
               <strong>{{ maxPlayers }}</strong>
             </article>
           </div>
@@ -55,8 +55,8 @@
 
     <loading-overlay
       :show="loading"
-      title="正在进入仙府"
-      description="正在同步府主、席位和开局状态。"
+      title="正在进入房间"
+      description="正在同步房主、席位和开局状态。"
     />
   </main>
 </template>
@@ -65,7 +65,15 @@
 import LoadingOverlay from '../components/LoadingOverlay.vue'
 import { getRoom, joinRoom } from '../api/room'
 import { getAgentGameState } from '../api/game'
-import { getSeatProfiles, getSettings, normalizeAgentGameState, resetGameState, saveCurrentAgentSessionId, saveCurrentRoomCode, saveGameState } from '../store/game'
+import {
+  getSeatProfiles,
+  getSettings,
+  normalizeAgentGameState,
+  resetGameState,
+  saveCurrentAgentSessionId,
+  saveCurrentRoomCode,
+  saveGameState
+} from '../store/game'
 import { getSessionUser } from '../store/session'
 
 export default {
@@ -89,7 +97,7 @@ export default {
       return this.room?.settings?.maxPlayers || 6
     },
     playerCountText () {
-      return `${this.currentPlayers} / ${this.maxPlayers} 位仙友已入府`
+      return `${this.currentPlayers} / ${this.maxPlayers} 位玩家已加入`
     },
     ownerName () {
       return (this.room?.players || []).find(player => player.owner)?.nickname || ''
@@ -98,7 +106,7 @@ export default {
       const humanSeats = (this.room?.players || []).map(player => ({
         key: `human-${player.userId}`,
         name: player.nickname,
-        trait: `${player.owner ? '府主' : '真人道友'} · 第 ${player.seatNo} 仙位`
+        trait: `${player.owner ? '房主' : '真人玩家'} · 第 ${player.seatNo} 位`
       }))
       const rest = Math.max(0, this.maxPlayers - humanSeats.length)
       const agentSeats = getSeatProfiles(this.settings).slice(0, rest).map((seat, index) => ({
@@ -120,11 +128,11 @@ export default {
     async enterRoom () {
       const user = getSessionUser()
       if (!user?.id) {
-        this.message = '仙籍已失效，请重新入仙府。'
+        this.message = '登录状态已失效，请重新登录后加入房间。'
         return
       }
       if (!this.roomCode) {
-        this.message = '缺少仙府令。'
+        this.message = '缺少房间码。'
         return
       }
       this.loading = true
@@ -135,7 +143,7 @@ export default {
         resetGameState()
         await this.enterStartedRoom()
       } catch (error) {
-        this.message = error.message || '进入仙府失败。'
+        this.message = error.message || '进入房间失败。'
       } finally {
         this.loading = false
       }
@@ -146,7 +154,7 @@ export default {
         this.room = await getRoom(this.roomCode)
         await this.enterStartedRoom()
       } catch (error) {
-        this.message = error.message || '仙府同步失败。'
+        this.message = error.message || '房间状态同步失败。'
       }
     },
     async enterStartedRoom () {
@@ -162,9 +170,9 @@ export default {
     async copyRoomCode () {
       try {
         await navigator.clipboard.writeText(this.roomCode)
-        this.message = '仙府令已复制。'
+        this.message = '房间码已复制。'
       } catch (error) {
-        this.message = `仙府令：${this.roomCode}`
+        this.message = `房间码：${this.roomCode}`
       }
     }
   }
