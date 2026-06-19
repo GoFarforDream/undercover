@@ -149,11 +149,6 @@ export default {
         { value: 'CUSTOM', label: '府主自填' },
         { value: 'ADVENTURE', label: '秘境探险' }
       ],
-      adventureLevels: [
-        { id: 1, name: '第 1 关 · 初入灵谷' },
-        { id: 2, name: '第 2 关 · 云海试炼' },
-        { id: 3, name: '第 3 关 · 归墟迷阵' }
-      ],
       difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '渡劫', '大帝'],
       loading: false,
       loadingAction: '',
@@ -190,6 +185,16 @@ export default {
     isOwner () {
       const user = getSessionUser()
       return !this.room || this.room.ownerId === user?.id
+    },
+    adventureLevels () {
+      return Array.from({ length: 100 }, (_, index) => {
+        const levelNo = index + 1
+        const realm = this.realmByLevel(levelNo)
+        return {
+          id: levelNo,
+          name: `第 ${levelNo} 关 · ${realm}`
+        }
+      })
     },
     loadingTitle () {
       const titles = {
@@ -247,6 +252,15 @@ export default {
         throw new Error('手动灵契需要同时填写仙修词和魔修词。')
       }
       return { civilianWord, undercoverWord }
+    },
+    realmByLevel (levelNo) {
+      if (levelNo <= 15) return '炼气'
+      if (levelNo <= 30) return '筑基'
+      if (levelNo <= 45) return '金丹'
+      if (levelNo <= 60) return '元婴'
+      if (levelNo <= 75) return '化神'
+      if (levelNo <= 90) return '渡劫'
+      return '大帝'
     },
     async ensureRoom () {
       const user = getSessionUser()
