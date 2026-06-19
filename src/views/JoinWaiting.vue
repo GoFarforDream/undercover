@@ -165,7 +165,16 @@ export default {
       const normalized = normalizeAgentGameState(gameState, user.id)
       saveCurrentAgentSessionId(normalized.sessionId)
       saveGameState(normalized)
-      this.$router.push('/game')
+      this.goGame()
+    },
+    goGame () {
+      if (this.timer) {
+        window.clearInterval(this.timer)
+        this.timer = null
+      }
+      if (this.$route.path !== '/game') {
+        this.$router.push('/game')
+      }
     },
     async copyRoomCode () {
       try {

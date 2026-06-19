@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const service = axios.create({
-  baseURL: 'http://127.0.0.1:8081/api',
+  baseURL: process.env.VUE_APP_API_BASE_URL || '/api',
   timeout: 90000,
   headers: {
     'Content-Type': 'application/json'

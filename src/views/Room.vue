@@ -320,8 +320,17 @@ export default {
       const normalized = normalizeAgentGameState(gameState, user.id)
       saveCurrentAgentSessionId(normalized.sessionId)
       saveGameState(normalized)
-      this.$router.push('/game')
+      this.goGame()
       return true
+    },
+    goGame () {
+      if (this.timer) {
+        clearInterval(this.timer)
+        this.timer = null
+      }
+      if (this.$route.path !== '/game') {
+        this.$router.push('/game')
+      }
     },
     saveLocalSettings () {
       saveSettings(this.settings)
@@ -365,7 +374,7 @@ export default {
         const normalized = normalizeAgentGameState(gameState, user.id)
         saveCurrentAgentSessionId(normalized.sessionId)
         saveGameState(normalized)
-        this.$router.push('/game')
+        this.goGame()
       } catch (error) {
         this.message = error.message || '开启仙缘失败。'
       } finally {
