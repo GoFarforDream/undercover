@@ -53,7 +53,7 @@
       <aside class="waiting-side">
         <div class="room-card">
           <h2>仙府法阵</h2>
-          <p class="modal-copy">手动填写灵契会优先使用；留空则按修为境界生成。</p>
+          <p class="modal-copy">{{ wordModeDescription }}</p>
           <div class="settings-grid compact">
           <label class="setting-row">
             <span>道友仙位托管</span>
@@ -68,9 +68,21 @@
             </select>
           </label>
           <label>
+            选词模式
+            <select v-model="settings.wordMode">
+              <option v-for="mode in wordModes" :key="mode.value" :value="mode.value">{{ mode.label }}</option>
+            </select>
+          </label>
+          <label v-if="settings.wordMode === 'HEAVEN'">
             灵契难度
             <select v-model="settings.difficulty">
               <option v-for="difficulty in difficulties" :key="difficulty">{{ difficulty }}</option>
+            </select>
+          </label>
+          <label v-if="settings.wordMode === 'ADVENTURE'">
+            秘境关卡
+            <select v-model.number="settings.adventureLevelId">
+              <option v-for="level in adventureLevels" :key="level.id" :value="level.id">{{ level.name }}</option>
             </select>
           </label>
           <label>
@@ -85,13 +97,13 @@
             陈词秒数
             <input v-model.number="settings.roundSeconds" min="30" max="180" step="10" type="number">
           </label>
-          <label>
+          <label v-if="settings.wordMode === 'CUSTOM'">
             仙修词
-            <input v-model.trim="settings.civilianWord" placeholder="留空则按境界生成">
+            <input v-model.trim="settings.civilianWord" placeholder="府主填写仙修词">
           </label>
-          <label>
+          <label v-if="settings.wordMode === 'CUSTOM'">
             魔修词
-            <input v-model.trim="settings.undercoverWord" placeholder="留空则按境界生成">
+            <input v-model.trim="settings.undercoverWord" placeholder="府主填写魔修词">
           </label>
           </div>
           <div class="action-row">
@@ -132,6 +144,16 @@ export default {
       roomCode: this.$route.query.roomCode || getCurrentRoomCode(),
       countdown: 120,
       timer: null,
+      wordModes: [
+        { value: 'HEAVEN', label: '天道降契' },
+        { value: 'CUSTOM', label: '府主自填' },
+        { value: 'ADVENTURE', label: '秘境探险' }
+      ],
+      adventureLevels: [
+        { id: 1, name: '第 1 关 · 初入灵谷' },
+        { id: 2, name: '第 2 关 · 云海试炼' },
+        { id: 3, name: '第 3 关 · 归墟迷阵' }
+      ],
       difficulties: ['炼气', '筑基', '金丹', '元婴', '化神', '渡劫', '大帝'],
       loading: false,
       loadingAction: '',
@@ -184,6 +206,14 @@ export default {
         start: '正在补齐先天之灵、分配灵契并开启仙魔圆桌局。'
       }
       return descriptions[this.loadingAction] || '请稍等，圆桌正在同步状态。'
+    },
+    wordModeDescription () {
+      const map = {
+        HEAVEN: '天道降契会按修为境界生成灵契。',
+        CUSTOM: '府主自填需要同时填写仙修词和魔修词。',
+        ADVENTURE: '秘境探险会从所选关卡的固定词库中抽取灵契。'
+      }
+      return map[this.settings.wordMode] || map.HEAVEN
     }
   },
   mounted () {
@@ -204,13 +234,15 @@ export default {
         undercoverCount: this.settings.undercoverCount || 1,
         speechSeconds: 90,
         voteMode: 'PUBLIC',
-        allowSpectator: false
+        allowSpectator: false,
+        wordMode: this.settings.wordMode || 'HEAVEN',
+        adventureLevelId: this.settings.wordMode === 'ADVENTURE' ? (this.settings.adventureLevelId || 1) : null
       }
     },
     wordPairPayload () {
+      if (this.settings.wordMode !== 'CUSTOM') return null
       const civilianWord = (this.settings.civilianWord || '').trim()
       const undercoverWord = (this.settings.undercoverWord || '').trim()
-      if (!civilianWord && !undercoverWord) return null
       if (!civilianWord || !undercoverWord) {
         throw new Error('手动灵契需要同时填写仙修词和魔修词。')
       }
@@ -312,6 +344,8 @@ export default {
           agentNames: this.settings.agentNames || [],
           agentPersonalities: this.settings.agentPersonalities || [],
           difficulty: this.settings.difficulty || '炼气',
+          wordMode: this.settings.wordMode || 'HEAVEN',
+          adventureLevelId: this.settings.wordMode === 'ADVENTURE' ? (this.settings.adventureLevelId || 1) : null,
           wordPair: this.wordPairPayload()
         })
         const normalized = normalizeAgentGameState(gameState, user.id)

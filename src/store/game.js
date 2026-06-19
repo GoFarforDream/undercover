@@ -12,6 +12,8 @@ const defaultSettings = {
   roundSeconds: 60,
   agentLevel: '问道',
   difficulty: '炼气',
+  wordMode: 'HEAVEN',
+  adventureLevelId: 1,
   civilianWord: '',
   undercoverWord: '',
   agentNames: defaultAgentNames,

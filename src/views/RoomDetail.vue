@@ -51,6 +51,8 @@
         <div class="setting-list">
           <p><span>总席位</span><strong>{{ room.settings.maxPlayers }}</strong></p>
           <p><span>魔修数</span><strong>{{ room.settings.undercoverCount }}</strong></p>
+          <p><span>选词</span><strong>{{ wordModeText(room.settings.wordMode) }}</strong></p>
+          <p v-if="room.settings.wordMode === 'ADVENTURE'"><span>秘境关卡</span><strong>第 {{ room.settings.adventureLevelId || 1 }} 关</strong></p>
           <p><span>诛仙令</span><strong>{{ voteModeText(room.settings.voteMode) }}</strong></p>
           <p><span>观战</span><strong>{{ room.settings.allowSpectator ? '允许' : '关闭' }}</strong></p>
         </div>
@@ -201,6 +203,14 @@ export default {
         PRIVATE: '暗令'
       }
       return map[mode] || mode || '明令'
+    },
+    wordModeText (mode) {
+      const map = {
+        HEAVEN: '天道降契',
+        CUSTOM: '府主自填',
+        ADVENTURE: '秘境探险'
+      }
+      return map[mode] || '天道降契'
     }
   }
 }
