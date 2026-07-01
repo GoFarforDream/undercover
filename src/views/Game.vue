@@ -50,6 +50,7 @@
         <transition name="chat-fold">
           <div v-show="!chatCollapsed" class="round-panel-body">
             <p v-for="log in state.logs" :key="log">{{ log }}</p>
+            <p v-if="streamingText" class="streaming-log">{{ streamingSpeakerName }}：{{ streamingText }}</p>
             <p v-if="!state.logs.length" class="modal-copy">暂无陈词玉简。</p>
             <p v-if="message" class="form-message">{{ message }}</p>
           </div>
@@ -109,7 +110,7 @@ import LoadingOverlay from '../components/LoadingOverlay.vue'
 import PlayerSeat from '../components/PlayerSeat.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import { getCurrentAgentSessionId, getCurrentRoomCode, getGameState, getSettings, normalizeAgentGameState, normalizeBackendGameState, saveGameState, saveSettings } from '../store/game'
-import { getAgentGameState, getGameStateApi, submitAgentSpeech, submitAgentVote, submitSpeech, submitVote } from '../api/game'
+import { getAgentGameState, getAgentSpeechStreamUrl, getGameStateApi, submitAgentSpeech, submitAgentVote, submitSpeech, submitVote } from '../api/game'
 import { getSessionUser } from '../store/session'
 
 export default {
@@ -135,6 +136,11 @@ export default {
       thinkingCountdown: 0,
       thinkingTimer: null,
       pollTimer: null,
+      refreshing: false,
+      lastSpeechKey: '',
+      speechStream: null,
+      streamingPlayerId: null,
+      streamingText: '',
       sessionId: getCurrentAgentSessionId(),
       roomCode: getCurrentRoomCode()
     }
@@ -144,6 +150,9 @@ export default {
       return this.settings.playerAsAgent
     },
     activePlayer () {
+      if (this.streamingPlayerId) {
+        return this.state.players.find(player => String(player.id) === String(this.streamingPlayerId)) || this.state.players[0]
+      }
       if (this.activeBubblePlayerId) {
         return this.state.players.find(player => String(player.id) === String(this.activeBubblePlayerId)) || this.state.players[0]
       }
@@ -152,9 +161,18 @@ export default {
     displayedPlayers () {
       return (this.state.players || []).map(player => ({
         ...player,
-        speaking: this.activeBubblePlayerId ? String(player.id) === String(this.activeBubblePlayerId) : player.speaking,
-        speechBubble: this.activeBubblePlayerId && String(player.id) === String(this.activeBubblePlayerId) ? this.activeBubbleText : ''
+        speaking: this.streamingPlayerId
+          ? String(player.id) === String(this.streamingPlayerId)
+          : (this.activeBubblePlayerId ? String(player.id) === String(this.activeBubblePlayerId) : player.speaking),
+        streaming: String(player.id) === String(this.streamingPlayerId),
+        speechBubble: String(player.id) === String(this.streamingPlayerId)
+          ? this.streamingText
+          : (this.activeBubblePlayerId && String(player.id) === String(this.activeBubblePlayerId) ? this.activeBubbleText : '')
       }))
+    },
+    streamingSpeakerName () {
+      const player = this.state.players.find(item => String(item.id) === String(this.streamingPlayerId))
+      return player?.name || '先天之灵'
     },
     voteTargets () {
       const user = getSessionUser()
@@ -164,7 +182,7 @@ export default {
       return this.state.rawPhase === 'FINISHED'
     },
     isAgentSpeaking () {
-      return this.loadingAction === 'agentSpeech' || this.loadingAction === 'agentThinking'
+      return Boolean(this.streamingPlayerId) || this.loadingAction === 'agentSpeech' || this.loadingAction === 'agentThinking'
     },
     pendingPlayer () {
       const pendingId = this.state.rawPhase === 'VOTING' ? this.state.pendingVoterId : this.state.pendingSpeakerId
@@ -221,20 +239,26 @@ export default {
   },
   mounted () {
     this.refreshState()
-    this.pollTimer = window.setInterval(() => this.refreshState(), 3000)
+    this.pollTimer = window.setInterval(() => this.refreshState(), this.sessionId ? 1500 : 3000)
   },
   beforeDestroy () {
     if (this.pollTimer) window.clearInterval(this.pollTimer)
+    this.closeSpeechStream()
     this.clearThinkingTimer()
     this.clearBubbleTimer()
   },
   methods: {
     async refreshState () {
+      if (this.refreshing || this.speechStream) return
+      this.refreshing = true
       const user = getSessionUser()
       try {
         if (this.sessionId) {
           const backendState = await getAgentGameState(this.sessionId)
-          this.state = normalizeAgentGameState(backendState, user?.id)
+          const nextState = normalizeAgentGameState(backendState, user?.id)
+          this.showNewAgentSpeechBubble(nextState)
+          this.state = nextState
+          this.startPendingAgentSpeechStream()
         } else if (this.roomCode) {
           const backendState = await getGameStateApi(this.roomCode)
           this.state = normalizeBackendGameState(backendState, user?.id)
@@ -242,7 +266,71 @@ export default {
         saveGameState(this.state)
       } catch (error) {
         this.message = error.message || '仙魔局状态加载失败。'
+      } finally {
+        this.refreshing = false
       }
+    },
+    startPendingAgentSpeechStream () {
+      if (!this.sessionId || this.speechStream || this.state.rawPhase !== 'SPEAKING' || this.state.pendingSpeakerType !== 'AGENT') return
+      const playerId = this.state.pendingSpeakerId
+      if (!playerId) return
+      this.clearBubbleTimer()
+      this.streamingPlayerId = playerId
+      this.streamingText = ''
+      this.loadingAction = 'agentSpeech'
+      this.chatCollapsed = false
+
+      const source = new EventSource(getAgentSpeechStreamUrl(this.sessionId, playerId))
+      this.speechStream = source
+
+      source.addEventListener('chunk', event => {
+        const data = JSON.parse(event.data || '{}')
+        if (data.text) this.streamingText += data.text
+      })
+      source.addEventListener('final', event => {
+        const data = JSON.parse(event.data || '{}')
+        if (data.final) this.streamingText = this.cleanBubbleText(data.final, this.streamingSpeakerName)
+      })
+      source.addEventListener('done', () => {
+        const finalText = this.streamingText
+        const finalPlayerId = this.streamingPlayerId
+        this.closeSpeechStream()
+        if (finalText) this.showOnlyBubble(finalPlayerId, finalText, 8000)
+        window.setTimeout(() => this.refreshState(), 300)
+      })
+      source.addEventListener('error', event => {
+        try {
+          this.message = event.data ? JSON.parse(event.data).message : '先天之灵流式陈词中断。'
+        } catch (error) {
+          this.message = '先天之灵流式陈词中断。'
+        }
+        this.closeSpeechStream()
+        window.setTimeout(() => this.refreshState(), 800)
+      })
+    },
+    closeSpeechStream (clearText = true) {
+      if (this.speechStream) {
+        this.speechStream.close()
+        this.speechStream = null
+      }
+      this.streamingPlayerId = null
+      if (clearText) this.streamingText = ''
+      if (this.loadingAction === 'agentSpeech') this.loadingAction = ''
+    },
+    showNewAgentSpeechBubble (nextState) {
+      const speeches = nextState.raw?.speeches || []
+      const latest = speeches[speeches.length - 1]
+      if (!latest) return
+      const key = `${latest.id || ''}-${latest.player_id}-${latest.round_no}-${latest.created_at || ''}`
+      if (!this.lastSpeechKey) {
+        this.lastSpeechKey = key
+        return
+      }
+      if (key === this.lastSpeechKey) return
+      this.lastSpeechKey = key
+      if (latest.generated_by !== 'AGENT') return
+      const speaker = (nextState.players || []).find(player => String(player.id) === String(latest.player_id))
+      this.showOnlyBubble(latest.player_id, this.cleanBubbleText(latest.content, speaker?.name), 8000)
     },
     latestRoundSpeechByPlayer (state = this.state) {
       const session = state.raw?.session || {}
@@ -334,6 +422,7 @@ export default {
           saveGameState(this.state)
           this.newLog = ''
           this.showOnlyBubble(this.state.humanPlayerId, speechContent)
+          window.setTimeout(() => this.startPendingAgentSpeechStream(), 200)
         } else {
           const backendState = await submitSpeech({
             roomCode: this.roomCode,

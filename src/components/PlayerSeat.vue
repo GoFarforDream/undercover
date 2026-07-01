@@ -1,7 +1,7 @@
 <template>
   <article
     class="player-seat"
-    :class="{ active: player.speaking, out: !player.alive, human: player.type === 'human' }"
+    :class="{ active: player.speaking, out: !player.alive, human: player.type === 'human', streaming: player.streaming }"
     :style="positionStyle"
   >
     <div class="seat-avatar">{{ player.type === 'human' ? '道友' : player.id }}</div>
@@ -11,7 +11,7 @@
     </div>
     <i v-if="player.voted">已执令</i>
     <transition name="speech-pop">
-      <p v-if="player.speechBubble" class="speech-bubble">{{ player.speechBubble }}</p>
+      <p v-if="player.speechBubble" class="speech-bubble" :class="{ streaming: player.streaming }">{{ player.speechBubble }}</p>
     </transition>
   </article>
 </template>

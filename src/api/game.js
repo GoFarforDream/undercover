@@ -28,6 +28,11 @@ export function getAgentGameState (sessionId) {
   return request.get(`/agent-game/state/${sessionId}`)
 }
 
+export function getAgentSpeechStreamUrl (sessionId, playerId) {
+  const baseURL = process.env.VUE_APP_API_BASE_URL || '/api'
+  return `${baseURL}/agent-game/stream-speech/${sessionId}/${playerId}`
+}
+
 export function submitAgentSpeech (payload) {
   return request.post('/agent-game/speech', payload)
 }
